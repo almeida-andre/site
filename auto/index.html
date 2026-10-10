@@ -514,26 +514,38 @@
           if (box.getAttribute("data-state")) return;
           box.setAttribute("data-state", "loading");
           var v = document.createElement("video");
+          var img = box.querySelector("img");
           v.muted = true;
           v.loop = true;
           v.playsInline = true;
+          v.preload = "auto";
           v.setAttribute("muted", "");
           v.setAttribute("playsinline", "");
+          if (img) v.poster = img.getAttribute("src");
           v.addEventListener("loadeddata", function () {
             var old = box.querySelector("img, .ph");
-            if (old) box.replaceChild(v, old); else box.insertBefore(v, box.firstChild);
+            if (old) box.removeChild(old);
             box.setAttribute("data-state", "ready");
             zoomable(box);
-            if (!still && box.near && box !== current) play(v);
           });
-          v.addEventListener("error", function () { box.setAttribute("data-state", "missing"); });
+          v.addEventListener("error", function () {
+            if (current === box) dlg.close();
+            if (v.parentNode) v.parentNode.removeChild(v);
+            box.setAttribute("data-state", "missing");
+          });
           v.src = box.getAttribute("data-video");
+          // No iPhone (Safari e Chrome usam o WebKit) o vídeo só baixa se estiver na página e
+          // mandado tocar: entra por baixo do print, que sai quando chega o primeiro quadro
+          box.insertBefore(v, box.firstChild);
+          if (!still && box.near && box !== current) play(v);
         }
 
         // Demo grande: o próprio vídeo (ou imagem) do card vai para o <dialog> e volta ao fechar,
         // sem recarregar e no mesmo ponto
         function open(box) {
-          var el = box.querySelector("video, img");
+          // Vídeo mesmo se ainda carrega (mostra o print como capa): com os controles dá para
+          // tocar no toque, inclusive no iPhone em Modo de Pouca Energia, que barra o autoplay
+          var el = box.querySelector("video") || box.querySelector("img");
           if (!el) return;
           if (!dlg.showModal) { window.open(el.currentSrc || el.src, "_blank"); return; }
           current = box;
@@ -553,10 +565,12 @@
           var box = current, el = stage.firstChild;
           current = null;
           if (!box || !el) return;
-          if (el.tagName === "IMG" && box.querySelector("video")) {
+          if (el.tagName === "IMG" && box.getAttribute("data-state") === "ready") {
             // Primeiro quadro ampliado enquanto o vídeo carregava: o vídeo já está no card
             stage.removeChild(el);
             el = box.querySelector("video");
+          } else if (el.tagName === "IMG") {
+            box.appendChild(el); // por cima do vídeo que ainda carrega, se houver
           } else {
             box.insertBefore(el, box.firstChild);
           }
