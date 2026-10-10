@@ -41,19 +41,24 @@
       <link href="./home.css" rel="stylesheet" />
 
       <div class="home-container">
-        <div class="home-logo">
-          <img
-            src="public/playground_assets/gridlogo-200h.jpg"
-            alt="image"
-            class="home-image"
-          />
-          <a class="home-auto" href="auto/" data-umami-event="home-automacoes">Automações</a>
-        </div>
         <img
-          src="public/playground_assets/gridlogo2-300w.jpg"
+          src="public/playground_assets/gridlogo-200h.jpg"
           alt="image"
-          class="home-image1"
+          class="home-image"
         />
+        <!-- Malha interativa (vetor, 300 x 300). Posições dos nós em % do quadrado. -->
+        <div class="home-malha">
+          <img src="public/malha.svg" alt="" class="home-malha-vetor" />
+          <a class="home-no home-no-ativo" href="auto/" style="left: 20.23%; top: 33.90%" data-umami-event="home-no-automacoes">
+            <span class="home-no-ponto"></span>
+            <span class="home-no-rotulo">Automações</span>
+          </a>
+          <!-- Futuras páginas: por enquanto só o ponto -->
+          <span class="home-no" style="left: 66.88%; top: 18.44%" aria-hidden="true"><span class="home-no-ponto"></span></span>
+          <span class="home-no" style="left: 76.55%; top: 60.10%" aria-hidden="true"><span class="home-no-ponto"></span></span>
+          <span class="home-no" style="left: 34.22%; top: 80.21%" aria-hidden="true"><span class="home-no-ponto"></span></span>
+        </div>
+        <a class="home-email" href="mailto:projetos@grid.arq.br" data-umami-event="home-email">projetos@grid.arq.br</a>
       </div>
     </div>
   </body>
