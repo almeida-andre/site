@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-lang="pt">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GRID · Automações para Revit</title>
+    <meta name="description" content="Ferramentas e automações sob medida para Revit, feitas por quem projeta. Custom Revit tools and automations." />
+    <link rel="canonical" href="https://grid.arq.br/auto/" />
+    <meta property="og:title" content="GRID · Automações para Revit" />
+    <meta property="og:description" content="Ferramentas e automações sob medida para Revit." />
+    <meta property="og:url" content="https://grid.arq.br/auto/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="GRID" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:image" content="https://grid.arq.br/auto/img/og.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="GRID · Automações para Revit, feitas por quem projeta: ArqViz e Verificar Interferências no Revit" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://grid.arq.br/auto/img/og.jpg" />
+
+    <script>
+      // Idioma: ?lang= > escolha salva > idioma do navegador
+      (function () {
+        var l;
+        try { l = new URLSearchParams(location.search).get("lang") || localStorage.getItem("grid-lang"); } catch (e) {}
+        if (l !== "pt" && l !== "en") l = /^pt/i.test(navigator.language || "") ? "pt" : "en";
+        var h = document.documentElement;
+        h.setAttribute("data-lang", l);
+        h.lang = l === "pt" ? "pt-BR" : "en";
+        if (l === "en") document.title = "GRID · Revit Automations";
+      })();
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" />
+
+    <!-- Estatísticas (Umami, sem cookies). Só conta no domínio publicado, não ao abrir o arquivo local.
+         Eventos: data-umami-event nos links; ampliação das demos via umami.track no script do fim. -->
+    <script defer src="https://cloud.umami.is/script.js" data-website-id="afe60d64-e930-4e19-85ae-a520b32727cc" data-domains="www.grid.arq.br,grid.arq.br"></script>
+
+    <style>
+      :root {
+        --bg: #FAFAFA;
+        --surface: #FFFFFF;
+        --ink: #18181B;
+        --muted: #71717A;
+        --line: #E4E4E7;
+        --line-strong: #D4D4D8;
+        --btn-bg: #18181B;
+        --btn-ink: #FAFAFA;
+        --band-bg: #18181B;
+        --band-ink: #FAFAFA;
+        --band-muted: #A1A1AA;
+        --shadow: 0 1px 2px rgba(24, 24, 27, .04), 0 8px 24px rgba(24, 24, 27, .06);
+        --mesh: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='52'%3E%3Cpath d='M0 0H30M0 26H30M0 52H30M0 0L30 52M30 0L0 52' stroke='%23E4E4E7' fill='none'/%3E%3C/svg%3E");
+        --logo-filter: none;
+        --logo-blend: multiply;
+        --radius: 14px;
+        --sans: "Inter", "Aptos", "Segoe UI", system-ui, sans-serif;
+        --mono: "JetBrains Mono", "Aptos Mono", Consolas, monospace;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --bg: #09090B;
+          --surface: #131316;
+          --ink: #FAFAFA;
+          --muted: #A1A1AA;
+          --line: #27272A;
+          --line-strong: #3F3F46;
+          --btn-bg: #FAFAFA;
+          --btn-ink: #18181B;
+          --band-bg: #FAFAFA;
+          --band-ink: #18181B;
+          --band-muted: #52525B;
+          --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .3);
+          --mesh: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='52'%3E%3Cpath d='M0 0H30M0 26H30M0 52H30M0 0L30 52M30 0L0 52' stroke='%2327272A' fill='none'/%3E%3C/svg%3E");
+          --logo-filter: invert(1);
+          --logo-blend: screen;
+        }
+      }
+
+      * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font: 400 16px/1.55 var(--sans);
+        -webkit-font-smoothing: antialiased;
+      }
+      a { color: inherit; text-decoration: none; }
+      h1, h2, h3, p { margin: 0; }
+
+      /* Idioma */
+      html[data-lang="pt"] [data-l="en"],
+      html[data-lang="en"] [data-l="pt"] { display: none !important; }
+
+      .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+      @media (max-width: 600px) { .wrap { padding: 0 16px; } }
+
+      .eyebrow {
+        font: 500 12px/1 var(--mono);
+        letter-spacing: .12em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      /* Cabeçalho */
+      header { border-bottom: 1px solid var(--line); background: var(--bg); position: sticky; top: 0; z-index: 10; }
+      .bar { display: flex; align-items: center; justify-content: space-between; height: 64px; gap: 16px; }
+      .logo img { height: 24px; width: auto; display: block; filter: var(--logo-filter); mix-blend-mode: var(--logo-blend); }
+      .bar-right { display: flex; align-items: center; gap: 12px; }
+      .lang { display: flex; border: 1px solid var(--line-strong); border-radius: 8px; overflow: hidden; }
+      .lang button {
+        font: 500 12px/1 var(--mono);
+        letter-spacing: .06em;
+        padding: 8px 10px;
+        border: 0;
+        background: transparent;
+        color: var(--muted);
+        cursor: pointer;
+      }
+      .lang button[aria-pressed="true"] { background: var(--btn-bg); color: var(--btn-ink); }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font: 500 15px/1 var(--sans);
+        padding: 13px 18px;
+        border-radius: 8px;
+        border: 1px solid var(--btn-bg);
+        background: var(--btn-bg);
+        color: var(--btn-ink);
+        transition: opacity .15s;
+      }
+      .btn:hover { opacity: .85; }
+      .btn.small { font-size: 14px; padding: 9px 14px; }
+      .btn svg { width: 18px; height: 18px; flex: none; }
+      @media (max-width: 600px) { .bar .btn.small { display: none; } }
+
+      /* Hero */
+      .hero { position: relative; overflow: hidden; border-bottom: 1px solid var(--line); }
+      .hero-mesh {
+        position: absolute;
+        inset: 0;
+        background-image: var(--mesh);
+        background-size: 30px 52px;
+        -webkit-mask-image: radial-gradient(ellipse 60% 80% at 85% 40%, #000 0%, transparent 70%);
+        mask-image: radial-gradient(ellipse 60% 80% at 85% 40%, #000 0%, transparent 70%);
+        pointer-events: none;
+      }
+      .hero .wrap { position: relative; padding-top: 112px; padding-bottom: 104px; }
+      .hero h1 {
+        margin-top: 20px;
+        max-width: 760px;
+        font-size: clamp(36px, 6vw, 64px);
+        line-height: 1.05;
+        font-weight: 600;
+        letter-spacing: -.03em;
+        text-wrap: balance;
+      }
+      .hero p.lead { margin-top: 24px; max-width: 600px; font-size: 18px; color: var(--muted); text-wrap: pretty; }
+      @media (max-width: 600px) { .hero .wrap { padding-top: 72px; padding-bottom: 72px; } }
+
+      /* Seções */
+      section.block { padding: 96px 0; }
+      @media (max-width: 600px) { section.block { padding: 64px 0; } }
+      .head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 40px; }
+      .head h2 { margin-top: 12px; font-size: clamp(28px, 4vw, 40px); line-height: 1.1; font-weight: 600; letter-spacing: -.02em; }
+      .head p { max-width: 420px; color: var(--muted); }
+
+      /* Cards de ferramentas: 2 colunas; a demo encolhe para caber e abre grande no clique */
+      .tools { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
+      @media (max-width: 720px) { .tools { grid-template-columns: 1fr; } }
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+      .media {
+        position: relative;
+        aspect-ratio: 2 / 1;
+        border-bottom: 1px solid var(--line);
+        background: var(--bg) var(--mesh);
+        background-size: 30px 52px;
+        display: grid;
+        place-items: center;
+      }
+      .media img, .media video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; }
+      .media .ph { font: 400 11px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); background: var(--surface); padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; }
+      .media.zoomable { cursor: zoom-in; }
+      .media.zoomable:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
+      .media .zoom {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 1;
+        width: 30px;
+        height: 30px;
+        display: grid;
+        place-items: center;
+        background: var(--surface);
+        color: var(--ink);
+        border: 1px solid var(--line-strong);
+        border-radius: 6px;
+        opacity: .85;
+        pointer-events: none;
+        transition: opacity .15s;
+      }
+      .media .zoom svg { width: 16px; height: 16px; }
+      .media.zoomable:hover .zoom, .media.zoomable:focus-visible .zoom { opacity: 1; }
+      .card .body { padding: 20px 22px 24px; }
+      .card h3 { margin-top: 10px; font-size: 18px; font-weight: 600; letter-spacing: -.01em; }
+      .card p { margin-top: 8px; font-size: 15px; color: var(--muted); }
+
+      /* Demo ampliada */
+      dialog.viewer { padding: 0; border: 0; background: transparent; max-width: none; max-height: none; overflow: visible; }
+      dialog.viewer::backdrop { background: rgba(9, 9, 11, .85); }
+      dialog.viewer .stage video, dialog.viewer .stage img {
+        display: block;
+        max-width: calc(100vw - 48px);
+        max-height: calc(100vh - 112px);
+        width: auto;
+        height: auto;
+        border-radius: 10px;
+        background: #FFFFFF;
+        box-shadow: 0 24px 64px rgba(0, 0, 0, .5);
+      }
+      dialog.viewer .close {
+        position: fixed;
+        top: 16px;
+        right: 16px;
+        width: 40px;
+        height: 40px;
+        display: grid;
+        place-items: center;
+        border: 1px solid rgba(250, 250, 250, .25);
+        border-radius: 8px;
+        background: rgba(24, 24, 27, .6);
+        color: #FAFAFA;
+        cursor: pointer;
+      }
+      dialog.viewer .close:hover { background: rgba(63, 63, 70, .8); }
+      dialog.viewer .close svg { width: 20px; height: 20px; }
+      html:has(dialog.viewer[open]) { overflow: hidden; }
+
+      /* Como funciona */
+      .steps { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--line); }
+      @media (max-width: 760px) { .steps { grid-template-columns: 1fr; } }
+      .step { padding: 28px 28px 8px 0; }
+      .step + .step { padding-left: 28px; border-left: 1px solid var(--line); }
+      @media (max-width: 760px) {
+        .step, .step + .step { padding: 24px 0; border-left: 0; }
+        .step + .step { border-top: 1px solid var(--line); }
+      }
+      .step .num { font: 500 13px/1 var(--mono); color: var(--muted); }
+      .step h3 { margin-top: 16px; font-size: 20px; font-weight: 600; }
+      .step p { margin-top: 8px; color: var(--muted); }
+
+      /* Contato */
+      .band { background: var(--band-bg); color: var(--band-ink); border-radius: 20px; padding: 64px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 32px; }
+      @media (max-width: 600px) { .band { padding: 40px 24px; border-radius: 16px; } }
+      .band h2 { font-size: clamp(26px, 3.6vw, 36px); line-height: 1.15; font-weight: 600; letter-spacing: -.02em; max-width: 560px; text-wrap: balance; }
+      .band .btn { background: var(--band-ink); color: var(--band-bg); border-color: var(--band-ink); }
+
+      footer { border-top: 1px solid var(--line); padding: 28px 0 40px; }
+      footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; font-size: 14px; color: var(--muted); }
+      footer a:hover { color: var(--ink); }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="wrap bar">
+        <a class="logo" href="../" aria-label="GRID">
+          <img src="../public/playground_assets/gridlogo-200h.jpg" alt="GRID" />
+        </a>
+        <div class="bar-right">
+          <div class="lang" role="group" aria-label="Idioma / Language">
+            <button type="button" data-set-lang="pt">PT</button>
+            <button type="button" data-set-lang="en">EN</button>
+          </div>
+          <a class="btn small" href="#contato" data-umami-event="contato-menu">
+            <span data-l="pt">Contato</span><span data-l="en">Contact</span>
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="hero-mesh" aria-hidden="true"></div>
+        <div class="wrap">
+          <div class="eyebrow">
+            <span data-l="pt">GRID · Automação para Revit</span><span data-l="en">GRID · Revit automation</span>
+          </div>
+          <h1>
+            <span data-l="pt">Automações para Revit, feitas por quem projeta.</span>
+            <span data-l="en">Revit automations, built from real design work.</span>
+          </h1>
+          <p class="lead">
+            <span data-l="pt">Ferramentas e automações sob medida nascidas da prática de projeto de arquitetura: modelagem, coordenação, documentação e controle gráfico.</span>
+            <span data-l="en">Custom tools and automations born from everyday architecture work: modeling, coordination, documentation and graphics control.</span>
+          </p>
+        </div>
+      </section>
+
+      <section class="block" id="ferramentas">
+        <div class="wrap">
+          <div class="head">
+            <div>
+              <div class="eyebrow"><span data-l="pt">Ferramentas</span><span data-l="en">Tools</span></div>
+              <h2><span data-l="pt">O que já roda no Revit</span><span data-l="en">Already running in Revit</span></h2>
+            </div>
+            <p>
+              <span data-l="pt">Uma seleção das ferramentas que usamos nos nossos projetos.</span>
+              <span data-l="en">A selection of the tools we use on our projects.</span>
+            </p>
+          </div>
+
+          <!-- Demos: MP4 (H.264) em img/, com o nome do data-video de cada card.
+               Até o vídeo carregar, o card mostra o que estiver dentro do .media:
+               o primeiro quadro em .webp ou, sem ele, o placeholder. -->
+          <div class="tools">
+            <article class="card">
+              <div class="media" data-video="img/arqviz.mp4"><img src="img/arqviz.webp" alt="" loading="lazy" /></div>
+              <div class="body">
+                <div class="eyebrow"><span data-l="pt">Apresentação</span><span data-l="en">Presentation</span></div>
+                <h3>ArqViz</h3>
+                <p>
+                  <span data-l="pt">Aplica templates de cor de apresentação por grupos de categorias na vista ativa, inclusive em links, com pré-visualização ao vivo. A paleta nasce de uma cor base ou da biblioteca da equipe e pode virar View Template.</span>
+                  <span data-l="en">Applies presentation color schemes to groups of categories in the active view, links included, with a live preview. Palettes come from a single base color or the team library, and can be saved as a View Template.</span>
+                </p>
+              </div>
+            </article>
+
+            <article class="card">
+              <div class="media" data-video="img/interferencias.mp4"><img src="img/interferencias.webp" alt="" loading="lazy" /></div>
+              <div class="body">
+                <div class="eyebrow"><span data-l="pt">Compatibilização</span><span data-l="en">Coordination</span></div>
+                <h3><span data-l="pt">Verificar Interferências</span><span data-l="en">Clash Detection</span></h3>
+                <p>
+                  <span data-l="pt">Encontra sobreposições reais entre dois grupos de categorias (A&nbsp;×&nbsp;B), no modelo e nos links. Um clique no resultado abre uma vista 3D com section box e os dois elementos destacados.</span>
+                  <span data-l="en">Finds real overlaps between two groups of categories (A&nbsp;×&nbsp;B), in the model and in links. Click a result to open a 3D view with a section box and both elements highlighted.</span>
+                </p>
+              </div>
+            </article>
+
+            <article class="card">
+              <div class="media" data-video="img/parede-cortina.mp4"><img src="img/parede-cortina.webp" alt="" loading="lazy" /></div>
+              <div class="body">
+                <div class="eyebrow"><span data-l="pt">Documentação</span><span data-l="en">Documentation</span></div>
+                <h3><span data-l="pt">Parede Cortina</span><span data-l="en">Curtain Wall Views</span></h3>
+                <p>
+                  <span data-l="pt">Para cada parede cortina selecionada, cria planta, elevação, corte e 3D com o tipo de vista, o view template e a escala escolhidos. Também cota a modulação, coloca tags e monta a folha com as vistas alinhadas.</span>
+                  <span data-l="en">For each selected curtain wall, creates a plan, elevation, section and 3D view with the view type, template and scale you choose. It can also dimension the grid, add tags and lay out a sheet with the views aligned.</span>
+                </p>
+              </div>
+            </article>
+
+            <article class="card">
+              <div class="media" data-video="img/talude-por-pisos.mp4"><img src="img/talude-por-pisos.webp" alt="" loading="lazy" /></div>
+              <div class="body">
+                <div class="eyebrow"><span data-l="pt">Terreno</span><span data-l="en">Site</span></div>
+                <h3><span data-l="pt">Talude por Pisos</span><span data-l="en">Slope by Floors</span></h3>
+                <p>
+                  <span data-l="pt">Modela o talude do terreno entre a borda dos pisos selecionados e o Toposolid, na inclinação escolhida (1:1, 1:1,5, 1:2, 1:3 ou em graus). Também pode escavar o Toposolid com os pisos e mostra o maior desnível e até onde vai o pé do talude.</span>
+                  <span data-l="en">Shapes the terrain slope between the edges of the selected floors and the Toposolid, at the gradient you choose (1:1, 1:1.5, 1:2, 1:3 or in degrees). It can also cut the Toposolid with the floors, and shows the largest height difference and how far the toe of the slope reaches.</span>
+                </p>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="block" style="padding-top: 0">
+        <div class="wrap">
+          <div class="head">
+            <div>
+              <div class="eyebrow"><span data-l="pt">Sob medida</span><span data-l="en">Custom work</span></div>
+              <h2><span data-l="pt">Sua rotina, automatizada</span><span data-l="en">Your routine, automated</span></h2>
+            </div>
+            <p>
+              <span data-l="pt">Cada escritório tem as suas tarefas repetitivas. Transformamos essas tarefas em ferramentas dentro do seu Revit, no padrão da sua equipe.</span>
+              <span data-l="en">Every office has its own repetitive tasks. We turn them into tools inside your Revit, built to your team's standards.</span>
+            </p>
+          </div>
+          <div class="steps">
+            <div class="step">
+              <div class="num">01</div>
+              <h3><span data-l="pt">Conversa</span><span data-l="en">Talk</span></h3>
+              <p><span data-l="pt">Você nos mostra a tarefa que consome horas da equipe.</span><span data-l="en">You show us the task that eats up your team's hours.</span></p>
+            </div>
+            <div class="step">
+              <div class="num">02</div>
+              <h3><span data-l="pt">Protótipo</span><span data-l="en">Prototype</span></h3>
+              <p><span data-l="pt">Uma primeira versão rodando no seu modelo, testada com casos reais.</span><span data-l="en">A first version running on your model, tested against real cases.</span></p>
+            </div>
+            <div class="step">
+              <div class="num">03</div>
+              <h3><span data-l="pt">Entrega</span><span data-l="en">Delivery</span></h3>
+              <p><span data-l="pt">Instalação de forma rápida e prática depois de ajustes finos e com suporte.</span><span data-l="en">Quick, easy installation after fine-tuning, with support.</span></p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="block" id="contato" style="padding-top: 0">
+        <div class="wrap">
+          <div class="band">
+            <div>
+              <h2><span data-l="pt">Tem uma tarefa repetitiva no Revit?</span><span data-l="en">Got a repetitive task in Revit?</span></h2>
+            </div>
+            <!-- TODO: botão de e-mail quando houver endereço definido -->
+            <a class="btn" data-l="pt" href="https://wa.me/5511983744701?text=Ol%C3%A1!%20Vi%20as%20automa%C3%A7%C3%B5es%20em%20grid.arq.br%2Fauto" target="_blank" rel="noopener" data-umami-event="whatsapp" data-umami-event-lang="pt">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 20l1.3-3.9A8 8 0 1 1 8 18.8L4 20z"/></svg>
+              Falar no WhatsApp
+            </a>
+            <a class="btn" data-l="en" href="https://wa.me/5511983744701?text=Hi!%20I%20saw%20the%20automations%20at%20grid.arq.br%2Fauto" target="_blank" rel="noopener" data-umami-event="whatsapp" data-umami-event-lang="en">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 20l1.3-3.9A8 8 0 1 1 8 18.8L4 20z"/></svg>
+              Chat on WhatsApp
+            </a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap">
+        <span>© 2026 GRID</span>
+        <a href="../">grid.arq.br</a>
+      </div>
+    </footer>
+
+    <dialog class="viewer" id="viewer">
+      <button type="button" class="close" data-close>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+      <div class="stage"></div>
+    </dialog>
+
+    <script>
+      (function () {
+        var h = document.documentElement;
+        var buttons = document.querySelectorAll("[data-set-lang]");
+        function setLang(l) {
+          h.setAttribute("data-lang", l);
+          h.lang = l === "pt" ? "pt-BR" : "en";
+          document.title = l === "pt" ? "GRID · Automações para Revit" : "GRID · Revit Automations";
+          for (var i = 0; i < buttons.length; i++) {
+            buttons[i].setAttribute("aria-pressed", buttons[i].getAttribute("data-set-lang") === l ? "true" : "false");
+          }
+        }
+        for (var i = 0; i < buttons.length; i++) {
+          buttons[i].addEventListener("click", function () {
+            var l = this.getAttribute("data-set-lang");
+            setLang(l);
+            try { localStorage.setItem("grid-lang", l); } catch (e) {}
+          });
+        }
+        setLang(h.getAttribute("data-lang"));
+      })();
+
+      // Demos: o vídeo carrega quando o card chega perto da tela e só toca enquanto aparece.
+      // Sem o arquivo, fica o que estiver no card (print ou placeholder). Clique abre a demo grande.
+      // Com "reduzir movimento" ligado, nada toca sozinho; na demo grande aparecem os controles.
+      (function () {
+        var h = document.documentElement;
+        var boxes = document.querySelectorAll(".media");
+        var vids = document.querySelectorAll(".media[data-video]");
+        var still = !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
+        var dlg = document.getElementById("viewer");
+        var stage = dlg.querySelector(".stage");
+        var current = null;
+        var ZOOM_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg>';
+
+        function play(v) {
+          var p = v.play();
+          if (p && p.catch) p.catch(function () {});
+        }
+        function labels() {
+          var en = h.getAttribute("data-lang") === "en";
+          var z = document.querySelectorAll(".media.zoomable");
+          for (var i = 0; i < z.length; i++) z[i].setAttribute("aria-label", en ? "Enlarge demo" : "Ampliar demonstração");
+          dlg.querySelector("[data-close]").setAttribute("aria-label", en ? "Close" : "Fechar");
+        }
+        function zoomable(box) {
+          if (box.classList.contains("zoomable")) return;
+          box.classList.add("zoomable");
+          box.setAttribute("role", "button");
+          box.setAttribute("tabindex", "0");
+          var z = document.createElement("span");
+          z.className = "zoom";
+          z.innerHTML = ZOOM_ICON;
+          box.appendChild(z);
+          labels();
+        }
+        function load(box) {
+          if (box.getAttribute("data-state")) return;
+          box.setAttribute("data-state", "loading");
+          var v = document.createElement("video");
+          v.muted = true;
+          v.loop = true;
+          v.playsInline = true;
+          v.setAttribute("muted", "");
+          v.setAttribute("playsinline", "");
+          v.addEventListener("loadeddata", function () {
+            var old = box.querySelector("img, .ph");
+            if (old) box.replaceChild(v, old); else box.insertBefore(v, box.firstChild);
+            box.setAttribute("data-state", "ready");
+            zoomable(box);
+            if (!still && box.near && box !== current) play(v);
+          });
+          v.addEventListener("error", function () { box.setAttribute("data-state", "missing"); });
+          v.src = box.getAttribute("data-video");
+        }
+
+        // Demo grande: o próprio vídeo (ou imagem) do card vai para o <dialog> e volta ao fechar,
+        // sem recarregar e no mesmo ponto
+        function open(box) {
+          var el = box.querySelector("video, img");
+          if (!el) return;
+          if (!dlg.showModal) { window.open(el.currentSrc || el.src, "_blank"); return; }
+          current = box;
+          if (el.tagName === "VIDEO") el.controls = true;
+          stage.appendChild(el);
+          dlg.showModal();
+          if (el.tagName === "VIDEO" && !still) play(el);
+          // Estatística: qual demo foi ampliada ("img/arqviz.mp4" → "arqviz")
+          if (window.umami && umami.track) {
+            umami.track("demo-ampliada", {
+              ferramenta: (box.getAttribute("data-video") || "").replace(/^.*\/|\.\w+$/g, ""),
+              lang: h.getAttribute("data-lang")
+            });
+          }
+        }
+        dlg.addEventListener("close", function () {
+          var box = current, el = stage.firstChild;
+          current = null;
+          if (!box || !el) return;
+          if (el.tagName === "IMG" && box.querySelector("video")) {
+            // Primeiro quadro ampliado enquanto o vídeo carregava: o vídeo já está no card
+            stage.removeChild(el);
+            el = box.querySelector("video");
+          } else {
+            box.insertBefore(el, box.firstChild);
+          }
+          if (el.tagName === "VIDEO") {
+            el.controls = false;
+            if (box.near && !still) play(el); else el.pause();
+          }
+          box.focus({ preventScroll: true });
+        });
+        dlg.addEventListener("click", function (e) {
+          if (e.target === dlg || e.target.closest("[data-close]")) dlg.close();
+        });
+
+        for (var i = 0; i < boxes.length; i++) {
+          if (boxes[i].querySelector("img")) zoomable(boxes[i]);
+          boxes[i].addEventListener("click", function () {
+            if (this.classList.contains("zoomable")) open(this);
+          });
+          boxes[i].addEventListener("keydown", function (e) {
+            if (!this.classList.contains("zoomable")) return;
+            if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(this); }
+          });
+        }
+        document.addEventListener("click", function (e) {
+          if (e.target.closest && e.target.closest("[data-set-lang]")) labels();
+        });
+        labels();
+
+        if (!("IntersectionObserver" in window)) {
+          for (var k = 0; k < vids.length; k++) { vids[k].near = true; load(vids[k]); }
+          return;
+        }
+        var io = new IntersectionObserver(function (entries) {
+          for (var i = 0; i < entries.length; i++) {
+            var box = entries[i].target;
+            box.near = entries[i].isIntersecting;
+            if (box.near) load(box);
+            var v = box.querySelector("video");
+            if (!v || still) continue;
+            if (box.near && box !== current) play(v); else v.pause();
+          }
+        }, { rootMargin: "200px 0px" });
+        for (var j = 0; j < vids.length; j++) io.observe(vids[j]);
+      })();
+    </script>
+  </body>
+</html>

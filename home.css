@@ -13,6 +13,41 @@
   align-self: center;
   object-fit: cover;
 }
+/* Link para /auto à direita do logo; o logo continua centrado */
+.home-logo {
+  position: relative;
+  align-self: center;
+}
+.home-auto {
+  position: absolute;
+  top: 50%;
+  left: calc(100% + 16px);
+  transform: translateY(-50%);
+  white-space: nowrap;
+  font-family: Inter, "Segoe UI", system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  color: #18181B;
+  text-decoration: underline;
+  text-decoration-color: #A1A1AA;
+  text-underline-offset: 5px;
+  transition: text-decoration-color .15s;
+}
+.home-auto:hover {
+  text-decoration-color: #18181B;
+}
+@media (max-width: 400px) {
+  .home-auto {
+    left: calc(100% + 6px);
+    font-size: 13px;
+  }
+}
+@media (max-width: 370px) {
+  .home-auto {
+    left: calc(100% + 2px);
+    font-size: 12px;
+  }
+}
 .home-image1 {
   width: 214px;
   height: 306px;
