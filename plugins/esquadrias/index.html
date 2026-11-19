@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-lang="pt">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GRID · Esquadrias para Revit</title>
+    <meta name="description" content="Plugin para Revit que transforma o catálogo DWG de perfis de alumínio em famílias paramétricas: perfis, quadros e esquadrias. Revit plugin for aluminium windows and doors." />
+    <link rel="canonical" href="https://grid.arq.br/plugins/esquadrias/" />
+    <meta property="og:title" content="GRID · Esquadrias para Revit" />
+    <meta property="og:description" content="Do catálogo DWG do fabricante à esquadria pronta no Revit, em três módulos." />
+    <meta property="og:url" content="https://grid.arq.br/plugins/esquadrias/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="GRID" />
+    <meta property="og:locale" content="pt_BR" />
+    <!-- TODO: og:image / twitter:image quando houver a imagem de prévia (img/og.jpg, 1200×630) -->
+
+    <script>
+      // Idioma: ?lang= > escolha salva > idioma do navegador
+      (function () {
+        var l;
+        try { l = new URLSearchParams(location.search).get("lang") || localStorage.getItem("grid-lang"); } catch (e) {}
+        if (l !== "pt" && l !== "en") l = /^pt/i.test(navigator.language || "") ? "pt" : "en";
+        var h = document.documentElement;
+        h.setAttribute("data-lang", l);
+        h.lang = l === "pt" ? "pt-BR" : "en";
+        if (l === "en") document.title = "GRID · Windows & Doors for Revit";
+      })();
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" />
+
+    <!-- Estatísticas (Umami, sem cookies). Só conta no domínio publicado, não ao abrir o arquivo local.
+         Eventos: data-umami-event nos links; ampliação das demos via umami.track no script do fim. -->
+    <script defer src="https://cloud.umami.is/script.js" data-website-id="afe60d64-e930-4e19-85ae-a520b32727cc" data-domains="www.grid.arq.br,grid.arq.br"></script>
+
+    <style>
+      :root {
+        --bg: #FAFAFA;
+        --surface: #FFFFFF;
+        --ink: #18181B;
+        --muted: #71717A;
+        --line: #E4E4E7;
+        --line-strong: #D4D4D8;
+        --btn-bg: #18181B;
+        --btn-ink: #FAFAFA;
+        --band-bg: #18181B;
+        --band-ink: #FAFAFA;
+        --band-muted: #A1A1AA;
+        --shadow: 0 1px 2px rgba(24, 24, 27, .04), 0 8px 24px rgba(24, 24, 27, .06);
+        --mesh: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='52'%3E%3Cpath d='M0 0H30M0 26H30M0 52H30M0 0L30 52M30 0L0 52' stroke='%23E4E4E7' fill='none'/%3E%3C/svg%3E");
+        --logo-filter: none;
+        --logo-blend: multiply;
+        --radius: 14px;
+        --sans: "Inter", "Aptos", "Segoe UI", system-ui, sans-serif;
+        --mono: "JetBrains Mono", "Aptos Mono", Consolas, monospace;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --bg: #09090B;
+          --surface: #131316;
+          --ink: #FAFAFA;
+          --muted: #A1A1AA;
+          --line: #27272A;
+          --line-strong: #3F3F46;
+          --btn-bg: #FAFAFA;
+          --btn-ink: #18181B;
+          --band-bg: #FAFAFA;
+          --band-ink: #18181B;
+          --band-muted: #52525B;
+          --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .3);
+          --mesh: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='52'%3E%3Cpath d='M0 0H30M0 26H30M0 52H30M0 0L30 52M30 0L0 52' stroke='%2327272A' fill='none'/%3E%3C/svg%3E");
+          --logo-filter: invert(1);
+          --logo-blend: screen;
+        }
+      }
+
+      * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font: 400 16px/1.55 var(--sans);
+        -webkit-font-smoothing: antialiased;
+      }
+      a { color: inherit; text-decoration: none; }
+      h1, h2, h3, p { margin: 0; }
+
+      /* Idioma */
+      html[data-lang="pt"] [data-l="en"],
+      html[data-lang="en"] [data-l="pt"] { display: none !important; }
+
+      .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+      @media (max-width: 600px) { .wrap { padding: 0 16px; } }
+
+      .eyebrow {
+        font: 500 12px/1 var(--mono);
+        letter-spacing: .12em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      /* Cabeçalho */
+      header { border-bottom: 1px solid var(--line); background: var(--bg); position: sticky; top: 0; z-index: 10; }
+      .bar { display: flex; align-items: center; justify-content: space-between; height: 64px; gap: 16px; }
+      .logo img { height: 24px; width: auto; display: block; filter: var(--logo-filter); mix-blend-mode: var(--logo-blend); }
+      .bar-right { display: flex; align-items: center; gap: 12px; }
+      .lang { display: flex; border: 1px solid var(--line-strong); border-radius: 8px; overflow: hidden; }
+      .lang button {
+        font: 500 12px/1 var(--mono);
+        letter-spacing: .06em;
+        padding: 8px 10px;
+        border: 0;
+        background: transparent;
+        color: var(--muted);
+        cursor: pointer;
+      }
+      .lang button[aria-pressed="true"] { background: var(--btn-bg); color: var(--btn-ink); }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font: 500 15px/1 var(--sans);
+        padding: 13px 18px;
+        border-radius: 8px;
+        border: 1px solid var(--btn-bg);
+        background: var(--btn-bg);
+        color: var(--btn-ink);
+        transition: opacity .15s;
+      }
+      .btn:hover { opacity: .85; }
+      .btn.small { font-size: 14px; padding: 9px 14px; }
+      .btn svg { width: 18px; height: 18px; flex: none; }
+      @media (max-width: 600px) { .bar .btn.small { display: none; } }
+
+      /* Hero */
+      .hero { position: relative; overflow: hidden; border-bottom: 1px solid var(--line); }
+      .hero-mesh {
+        position: absolute;
+        inset: 0;
+        background-image: var(--mesh);
+        background-size: 30px 52px;
+        -webkit-mask-image: radial-gradient(ellipse 60% 80% at 85% 40%, #000 0%, transparent 70%);
+        mask-image: radial-gradient(ellipse 60% 80% at 85% 40%, #000 0%, transparent 70%);
+        pointer-events: none;
+      }
+      .hero .wrap { position: relative; padding-top: 104px; padding-bottom: 96px; }
+      .hero h1 {
+        margin-top: 20px;
+        max-width: 820px;
+        font-size: clamp(36px, 6vw, 64px);
+        line-height: 1.05;
+        font-weight: 600;
+        letter-spacing: -.03em;
+        text-wrap: balance;
+      }
+      .hero p.lead { margin-top: 24px; max-width: 620px; font-size: 18px; color: var(--muted); text-wrap: pretty; }
+      @media (max-width: 600px) { .hero .wrap { padding-top: 64px; padding-bottom: 64px; } }
+
+      /* Sequência dos módulos no hero */
+      .flow { margin-top: 36px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+      .flow a {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 10px;
+        padding: 10px 14px;
+        background: var(--surface);
+        border: 1px solid var(--line-strong);
+        border-radius: 8px;
+        font-size: 15px;
+        font-weight: 500;
+        transition: border-color .15s;
+      }
+      .flow a:hover { border-color: var(--ink); }
+      .flow a .n { font: 500 12px/1 var(--mono); color: var(--muted); }
+      .flow .arrow { color: var(--muted); width: 18px; height: 18px; flex: none; }
+      @media (max-width: 600px) { .flow .arrow { display: none; } } /* na quebra de linha a seta sobrava no fim */
+
+      /* Seções */
+      section.block { padding: 96px 0; }
+      @media (max-width: 600px) { section.block { padding: 64px 0; } }
+      .head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 40px; }
+      .head h2 { margin-top: 12px; font-size: clamp(28px, 4vw, 40px); line-height: 1.1; font-weight: 600; letter-spacing: -.02em; }
+      .head p { max-width: 420px; color: var(--muted); }
+
+      /* Módulos: demo grande à esquerda, funcionalidades à direita */
+      .module {
+        display: grid;
+        grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+        gap: 48px;
+        align-items: center;
+        padding: 48px 0;
+        border-top: 1px solid var(--line);
+        scroll-margin-top: 64px;
+      }
+      .module:first-of-type { border-top: 0; padding-top: 0; }
+      @media (max-width: 860px) { .module { grid-template-columns: 1fr; gap: 24px; } }
+      .frame {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+      }
+      .module .num { font: 500 13px/1 var(--mono); color: var(--muted); }
+      .module h3 { margin-top: 14px; font-size: clamp(24px, 3vw, 30px); line-height: 1.15; font-weight: 600; letter-spacing: -.02em; }
+      .module .desc { margin-top: 12px; color: var(--muted); text-wrap: pretty; }
+      .feats { list-style: none; margin: 20px 0 0; padding: 0; }
+      .feats li {
+        position: relative;
+        padding: 10px 0 10px 22px;
+        border-top: 1px solid var(--line);
+        font-size: 15px;
+      }
+      .feats li::before {
+        content: "";
+        position: absolute;
+        left: 2px;
+        top: 18px;
+        width: 8px;
+        height: 7px;
+        background: var(--ink);
+        clip-path: polygon(50% 0, 100% 100%, 0 100%); /* triângulo da malha do logo */
+      }
+
+      /* Demos */
+      .media {
+        position: relative;
+        aspect-ratio: 2 / 1;
+        background: var(--bg) var(--mesh);
+        background-size: 30px 52px;
+        display: grid;
+        place-items: center;
+      }
+      .media img, .media video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; }
+      .ph { font: 400 11px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); background: var(--surface); padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; }
+      .media.zoomable { cursor: zoom-in; }
+      .media.zoomable:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
+      .media .zoom {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 1;
+        width: 30px;
+        height: 30px;
+        display: grid;
+        place-items: center;
+        background: var(--surface);
+        color: var(--ink);
+        border: 1px solid var(--line-strong);
+        border-radius: 6px;
+        opacity: .85;
+        pointer-events: none;
+        transition: opacity .15s;
+      }
+      .media .zoom svg { width: 16px; height: 16px; }
+      .media.zoomable:hover .zoom, .media.zoomable:focus-visible .zoom { opacity: 1; }
+
+      /* Demo ampliada */
+      dialog.viewer { padding: 0; border: 0; background: transparent; max-width: none; max-height: none; overflow: visible; }
+      dialog.viewer::backdrop { background: rgba(9, 9, 11, .85); }
+      dialog.viewer .stage video, dialog.viewer .stage img {
+        display: block;
+        max-width: calc(100vw - 48px);
+        max-height: calc(100vh - 112px);
+        width: auto;
+        height: auto;
+        border-radius: 10px;
+        background: #FFFFFF;
+        box-shadow: 0 24px 64px rgba(0, 0, 0, .5);
+      }
+      dialog.viewer .close {
+        position: fixed;
+        top: 16px;
+        right: 16px;
+        width: 40px;
+        height: 40px;
+        display: grid;
+        place-items: center;
+        border: 1px solid rgba(250, 250, 250, .25);
+        border-radius: 8px;
+        background: rgba(24, 24, 27, .6);
+        color: #FAFAFA;
+        cursor: pointer;
+      }
+      dialog.viewer .close:hover { background: rgba(63, 63, 70, .8); }
+      dialog.viewer .close svg { width: 20px; height: 20px; }
+      html:has(dialog.viewer[open]) { overflow: hidden; }
+
+      /* Resultado: modelo 3D */
+      .model {
+        position: relative;
+        aspect-ratio: 16 / 9;
+        min-height: 360px;
+        background: var(--bg) var(--mesh);
+        background-size: 30px 52px;
+        display: grid;
+        place-items: center;
+      }
+      @media (max-width: 600px) { .model { aspect-ratio: 4 / 5; min-height: 0; } }
+      .model .hint { position: absolute; left: 16px; bottom: 14px; font: 400 12px/1 var(--mono); color: var(--muted); }
+      .note { margin-top: 16px; font-size: 14px; color: var(--muted); }
+
+      /* Contato */
+      .band { background: var(--band-bg); color: var(--band-ink); border-radius: 20px; padding: 64px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 32px; }
+      @media (max-width: 600px) { .band { padding: 40px 24px; border-radius: 16px; } }
+      .band h2 { font-size: clamp(26px, 3.6vw, 36px); line-height: 1.15; font-weight: 600; letter-spacing: -.02em; max-width: 560px; text-wrap: balance; }
+      .band .btn { background: var(--band-ink); color: var(--band-bg); border-color: var(--band-ink); }
+      .band > div:first-child { flex: 1 1 300px; } /* o título quebra em 2 linhas para os botões caberem ao lado */
+      .band-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+      .band .btn.outline { background: transparent; color: var(--band-ink); border-color: var(--band-muted); }
+      .band .btn.outline:hover { opacity: 1; border-color: var(--band-ink); }
+
+      footer { border-top: 1px solid var(--line); padding: 28px 0 40px; }
+      footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; font-size: 14px; color: var(--muted); }
+      footer nav { display: flex; gap: 20px; }
+      footer a:hover { color: var(--ink); }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="wrap bar">
+        <a class="logo" href="../../" aria-label="GRID">
+          <img src="../../public/playground_assets/gridlogo-200h.jpg" alt="GRID" />
+        </a>
+        <div class="bar-right">
+          <div class="lang" role="group" aria-label="Idioma / Language">
+            <button type="button" data-set-lang="pt">PT</button>
+            <button type="button" data-set-lang="en">EN</button>
+          </div>
+          <a class="btn small" href="#contato" data-umami-event="contato-menu" data-umami-event-pagina="esquadrias">
+            <span data-l="pt">Contato</span><span data-l="en">Contact</span>
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="hero-mesh" aria-hidden="true"></div>
+        <div class="wrap">
+          <div class="eyebrow"><span data-l="pt">Plugin para Revit</span><span data-l="en">Revit plugin</span></div>
+          <h1>
+            <span data-l="pt">Esquadrias de alumínio, do catálogo ao Revit.</span>
+            <span data-l="en">Aluminium windows and doors, from catalog to Revit.</span>
+          </h1>
+          <p class="lead">
+            <span data-l="pt">Três módulos transformam o catálogo DWG do fabricante em famílias paramétricas: primeiro os perfis, depois os quadros, por fim a esquadria pronta para o projeto.</span>
+            <span data-l="en">Three modules turn the manufacturer's DWG catalog into parametric families: profiles first, then frames, and finally the finished window or door, ready for the project.</span>
+          </p>
+          <nav class="flow" aria-label="Módulos / Modules">
+            <a href="#perfis"><span class="n">01</span><span data-l="pt">Perfis</span><span data-l="en">Profiles</span></a>
+            <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M4 12h15M14 7l5 5-5 5"/></svg>
+            <a href="#quadros"><span class="n">02</span><span data-l="pt">Quadros</span><span data-l="en">Frames</span></a>
+            <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M4 12h15M14 7l5 5-5 5"/></svg>
+            <a href="#esquadrias"><span class="n">03</span><span data-l="pt">Esquadrias</span><span data-l="en">Windows &amp; doors</span></a>
+            <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M4 12h15M14 7l5 5-5 5"/></svg>
+            <a href="#resultado"><span data-l="pt">Resultado 3D</span><span data-l="en">3D result</span></a>
+          </nav>
+        </div>
+      </section>
+
+      <section class="block" id="modulos">
+        <div class="wrap">
+          <div class="head">
+            <div>
+              <div class="eyebrow"><span data-l="pt">Módulos</span><span data-l="en">Modules</span></div>
+              <h2><span data-l="pt">Uma família alimenta a próxima</span><span data-l="en">Each family feeds the next</span></h2>
+            </div>
+            <p>
+              <span data-l="pt">Cada módulo usa as famílias geradas pelo anterior, então uma mudança no perfil chega até a esquadria.</span>
+              <span data-l="en">Each module builds on the families made by the one before, so a change to a profile carries through to the window.</span>
+            </p>
+          </div>
+
+          <!-- Demos: MP4 (H.264) em img/, com o nome do data-video de cada módulo.
+               Até o vídeo carregar, aparece o que estiver dentro do .media:
+               o primeiro quadro em .webp ou, sem ele, o placeholder. -->
+          <article class="module" id="perfis">
+            <div class="frame">
+              <div class="media" data-video="img/perfis.mp4"><span class="ph">demo</span></div>
+            </div>
+            <div>
+              <div class="num">01</div>
+              <h3><span data-l="pt">Perfis</span><span data-l="en">Profiles</span></h3>
+              <p class="desc">
+                <span data-l="pt">Lê os blocos do catálogo DWG do fabricante e gera uma família de perfil para cada um.</span>
+                <span data-l="en">Reads the blocks of the manufacturer's DWG catalog and creates a profile family for each one.</span>
+              </p>
+              <ul class="feats">
+                <li><span data-l="pt">Seção tirada do próprio desenho do catálogo, com arcos e furos.</span><span data-l="en">Section taken straight from the catalog drawing, arcs and holes included.</span></li>
+                <li><span data-l="pt">Área, momentos de inércia, módulos resistentes e peso linear calculados e gravados na família.</span><span data-l="en">Area, moments of inertia, section moduli and weight per meter calculated and written into the family.</span></li>
+                <li><span data-l="pt">Prévia da seção antes de gerar.</span><span data-l="en">Section preview before anything is created.</span></li>
+                <li><span data-l="pt">Detalhes menores que a tolerância do Revit simplificados sem mudar a forma do perfil.</span><span data-l="en">Details smaller than Revit's tolerance are simplified without changing the profile's shape.</span></li>
+              </ul>
+            </div>
+          </article>
+
+          <article class="module" id="quadros">
+            <div class="frame">
+              <div class="media" data-video="img/quadros.mp4"><span class="ph">demo</span></div>
+            </div>
+            <div>
+              <div class="num">02</div>
+              <h3><span data-l="pt">Quadros</span><span data-l="en">Frames</span></h3>
+              <p class="desc">
+                <span data-l="pt">Monta contramarcos, arremates, trilhos e folhas a partir das famílias de perfil.</span>
+                <span data-l="en">Assembles subframes, trims, tracks and sashes from the profile families.</span>
+              </p>
+              <ul class="feats">
+                <li><span data-l="pt">Largura e altura paramétricas, com cortes a 45° ou junção reta.</span><span data-l="en">Parametric width and height, with 45° miters or butt joints.</span></li>
+                <li><span data-l="pt">Visibilidade própria para cada lado do quadro.</span><span data-l="en">Visibility control for each side of the frame.</span></li>
+                <li><span data-l="pt">Vista 3D explodida e etiquetas com o código de cada perfil.</span><span data-l="en">Exploded 3D view and labels with each profile's code.</span></li>
+                <li><span data-l="pt">Família conferida na geometria e testada em vários tamanhos antes de salvar.</span><span data-l="en">Each family is checked against its geometry and flexed at several sizes before saving.</span></li>
+              </ul>
+            </div>
+          </article>
+
+          <article class="module" id="esquadrias">
+            <div class="frame">
+              <div class="media" data-video="img/esquadrias.mp4"><span class="ph">demo</span></div>
+            </div>
+            <div>
+              <div class="num">03</div>
+              <h3><span data-l="pt">Esquadrias</span><span data-l="en">Windows &amp; doors</span></h3>
+              <p class="desc">
+                <span data-l="pt">Junta quadros, folhas e vidro numa esquadria pronta para inserir no projeto.</span>
+                <span data-l="en">Brings frames, sashes and glass together into a window or door ready to place in the project.</span>
+              </p>
+              <ul class="feats">
+                <li><span data-l="pt">Painel de parede-cortina ou janela hospedada em parede.</span><span data-l="en">As a curtain wall panel or as a wall-hosted window.</span></li>
+                <li><span data-l="pt">Baguete trocado sozinho conforme a espessura do vidro.</span><span data-l="en">Glazing bead switches automatically with the glass thickness.</span></li>
+                <li><span data-l="pt">Posição de cada parte aprendida das famílias que o escritório já usa.</span><span data-l="en">Each part's position is learned from the families the office already uses.</span></li>
+                <li><span data-l="pt">Prévia em elevação e 3D lado a lado, e nome da família no padrão do escritório.</span><span data-l="en">Elevation and 3D preview side by side, and family names that follow the office standard.</span></li>
+              </ul>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="block" id="resultado" style="padding-top: 0">
+        <div class="wrap">
+          <div class="head">
+            <div>
+              <div class="eyebrow"><span data-l="pt">Resultado</span><span data-l="en">Result</span></div>
+              <h2><span data-l="pt">Veja o modelo em 3D</span><span data-l="en">Explore the model in 3D</span></h2>
+            </div>
+            <p>
+              <span data-l="pt">Um recorte de modelo com esquadrias geradas pelos três módulos.</span>
+              <span data-l="en">A cut-out of a model with windows made by the three modules.</span>
+            </p>
+          </div>
+          <!-- TODO: visualizador 3D (modelo exportado do IFC) dentro do .model -->
+          <div class="frame">
+            <div class="model" id="modelo">
+              <span class="ph"><span data-l="pt">Modelo 3D</span><span data-l="en">3D model</span></span>
+            </div>
+          </div>
+          <p class="note">
+            <span data-l="pt">Revit 2025 e 2026.</span>
+            <span data-l="en">Revit 2025 and 2026.</span>
+          </p>
+        </div>
+      </section>
+
+      <section class="block" id="contato" style="padding-top: 0">
+        <div class="wrap">
+          <div class="band">
+            <div>
+              <h2><span data-l="pt">Quer gerar as famílias de esquadria do seu escritório?</span><span data-l="en">Want to generate your office's window and door families?</span></h2>
+            </div>
+            <div class="band-actions">
+              <a class="btn" data-l="pt" href="https://wa.me/5511983744701?text=Ol%C3%A1!%20Gostaria%20de%20conversar%20sobre%20o%20plugin%20de%20esquadrias%20para%20Revit" target="_blank" rel="noopener" data-umami-event="whatsapp" data-umami-event-lang="pt" data-umami-event-pagina="esquadrias">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 20l1.3-3.9A8 8 0 1 1 8 18.8L4 20z"/></svg>
+                Falar no WhatsApp
+              </a>
+              <a class="btn" data-l="en" href="https://wa.me/5511983744701?text=Hi!%20I%27d%20like%20to%20talk%20about%20the%20windows%20and%20doors%20plugin%20for%20Revit" target="_blank" rel="noopener" data-umami-event="whatsapp" data-umami-event-lang="en" data-umami-event-pagina="esquadrias">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 20l1.3-3.9A8 8 0 1 1 8 18.8L4 20z"/></svg>
+                Chat on WhatsApp
+              </a>
+              <a class="btn outline" data-l="pt" href="mailto:projetos@grid.arq.br?subject=Plugin%20de%20esquadrias%20para%20Revit" data-umami-event="email" data-umami-event-lang="pt" data-umami-event-pagina="esquadrias">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3.5 6h17v12h-17z"/><path d="M3.5 6.5l8.5 6.5 8.5-6.5"/></svg>
+                projetos@grid.arq.br
+              </a>
+              <a class="btn outline" data-l="en" href="mailto:projetos@grid.arq.br?subject=Windows%20and%20doors%20plugin%20for%20Revit" data-umami-event="email" data-umami-event-lang="en" data-umami-event-pagina="esquadrias">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3.5 6h17v12h-17z"/><path d="M3.5 6.5l8.5 6.5 8.5-6.5"/></svg>
+                projetos@grid.arq.br
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap">
+        <span>© 2026 GRID</span>
+        <nav>
+          <a href="../../auto/"><span data-l="pt">Automações</span><span data-l="en">Automations</span></a>
+          <a href="../../">grid.arq.br</a>
+        </nav>
+      </div>
+    </footer>
+
+    <dialog class="viewer" id="viewer">
+      <button type="button" class="close" data-close>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+      <div class="stage"></div>
+    </dialog>
+
+    <script>
+      (function () {
+        var h = document.documentElement;
+        var buttons = document.querySelectorAll("[data-set-lang]");
+        function setLang(l) {
+          h.setAttribute("data-lang", l);
+          h.lang = l === "pt" ? "pt-BR" : "en";
+          document.title = l === "pt" ? "GRID · Esquadrias para Revit" : "GRID · Windows & Doors for Revit";
+          for (var i = 0; i < buttons.length; i++) {
+            buttons[i].setAttribute("aria-pressed", buttons[i].getAttribute("data-set-lang") === l ? "true" : "false");
+          }
+        }
+        for (var i = 0; i < buttons.length; i++) {
+          buttons[i].addEventListener("click", function () {
+            var l = this.getAttribute("data-set-lang");
+            setLang(l);
+            try { localStorage.setItem("grid-lang", l); } catch (e) {}
+          });
+        }
+        setLang(h.getAttribute("data-lang"));
+      })();
+
+      // Demos (igual à /auto): o vídeo carrega quando chega perto da tela e só toca enquanto aparece.
+      // Sem o arquivo, fica o que estiver no .media (print ou placeholder). Clique abre a demo grande.
+      // Com "reduzir movimento" ligado, nada toca sozinho; na demo grande aparecem os controles.
+      (function () {
+        var h = document.documentElement;
+        var boxes = document.querySelectorAll(".media");
+        var vids = document.querySelectorAll(".media[data-video]");
+        var still = !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
+        var dlg = document.getElementById("viewer");
+        var stage = dlg.querySelector(".stage");
+        var current = null;
+        var ZOOM_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg>';
+
+        function play(v) {
+          var p = v.play();
+          if (p && p.catch) p.catch(function () {});
+        }
+        function labels() {
+          var en = h.getAttribute("data-lang") === "en";
+          var z = document.querySelectorAll(".media.zoomable");
+          for (var i = 0; i < z.length; i++) z[i].setAttribute("aria-label", en ? "Enlarge demo" : "Ampliar demonstração");
+          dlg.querySelector("[data-close]").setAttribute("aria-label", en ? "Close" : "Fechar");
+        }
+        function zoomable(box) {
+          if (box.classList.contains("zoomable")) return;
+          box.classList.add("zoomable");
+          box.setAttribute("role", "button");
+          box.setAttribute("tabindex", "0");
+          var z = document.createElement("span");
+          z.className = "zoom";
+          z.innerHTML = ZOOM_ICON;
+          box.appendChild(z);
+          labels();
+        }
+        function load(box) {
+          if (box.getAttribute("data-state")) return;
+          box.setAttribute("data-state", "loading");
+          var v = document.createElement("video");
+          var img = box.querySelector("img");
+          v.muted = true;
+          v.loop = true;
+          v.playsInline = true;
+          v.preload = "auto";
+          v.setAttribute("muted", "");
+          v.setAttribute("playsinline", "");
+          if (img) v.poster = img.getAttribute("src");
+          v.addEventListener("loadeddata", function () {
+            var old = box.querySelector("img, .ph");
+            if (old) box.removeChild(old);
+            box.setAttribute("data-state", "ready");
+            zoomable(box);
+          });
+          v.addEventListener("error", function () {
+            if (current === box) dlg.close();
+            if (v.parentNode) v.parentNode.removeChild(v);
+            box.setAttribute("data-state", "missing");
+          });
+          v.src = box.getAttribute("data-video");
+          // No iPhone (Safari e Chrome usam o WebKit) o vídeo só baixa se estiver na página e
+          // mandado tocar: entra por baixo do print, que sai quando chega o primeiro quadro
+          box.insertBefore(v, box.firstChild);
+          if (!still && box.near && box !== current) play(v);
+        }
+
+        // Demo grande: o próprio vídeo (ou imagem) vai para o <dialog> e volta ao fechar,
+        // sem recarregar e no mesmo ponto
+        function open(box) {
+          var el = box.querySelector("video") || box.querySelector("img");
+          if (!el) return;
+          if (!dlg.showModal) { window.open(el.currentSrc || el.src, "_blank"); return; }
+          current = box;
+          if (el.tagName === "VIDEO") el.controls = true;
+          stage.appendChild(el);
+          dlg.showModal();
+          if (el.tagName === "VIDEO" && !still) play(el);
+          // Estatística: qual demo foi ampliada ("img/perfis.mp4" → "esquadrias/perfis")
+          if (window.umami && umami.track) {
+            umami.track("demo-ampliada", {
+              ferramenta: "esquadrias/" + (box.getAttribute("data-video") || "").replace(/^.*\/|\.\w+$/g, ""),
+              lang: h.getAttribute("data-lang")
+            });
+          }
+        }
+        dlg.addEventListener("close", function () {
+          var box = current, el = stage.firstChild;
+          current = null;
+          if (!box || !el) return;
+          if (el.tagName === "IMG" && box.getAttribute("data-state") === "ready") {
+            stage.removeChild(el);
+            el = box.querySelector("video");
+          } else if (el.tagName === "IMG") {
+            box.appendChild(el);
+          } else {
+            box.insertBefore(el, box.firstChild);
+          }
+          if (el.tagName === "VIDEO") {
+            el.controls = false;
+            if (box.near && !still) play(el); else el.pause();
+          }
+          box.focus({ preventScroll: true });
+        });
+        dlg.addEventListener("click", function (e) {
+          if (e.target === dlg || e.target.closest("[data-close]")) dlg.close();
+        });
+
+        for (var i = 0; i < boxes.length; i++) {
+          if (boxes[i].querySelector("img")) zoomable(boxes[i]);
+          boxes[i].addEventListener("click", function () {
+            if (this.classList.contains("zoomable")) open(this);
+          });
+          boxes[i].addEventListener("keydown", function (e) {
+            if (!this.classList.contains("zoomable")) return;
+            if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(this); }
+          });
+        }
+        document.addEventListener("click", function (e) {
+          if (e.target.closest && e.target.closest("[data-set-lang]")) labels();
+        });
+        labels();
+
+        if (!("IntersectionObserver" in window)) {
+          for (var k = 0; k < vids.length; k++) { vids[k].near = true; load(vids[k]); }
+          return;
+        }
+        var io = new IntersectionObserver(function (entries) {
+          for (var i = 0; i < entries.length; i++) {
+            var box = entries[i].target;
+            box.near = entries[i].isIntersecting;
+            if (box.near) load(box);
+            var v = box.querySelector("video");
+            if (!v || still) continue;
+            if (box.near && box !== current) play(v); else v.pause();
+          }
+        }, { rootMargin: "200px 0px" });
+        for (var j = 0; j < vids.length; j++) io.observe(vids[j]);
+      })();
+    </script>
+  </body>
+</html>

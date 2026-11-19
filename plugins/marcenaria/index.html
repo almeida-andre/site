@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-lang="pt">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GRID · Marcenaria para Revit</title>
+    <meta name="description" content="Plugin para Revit que gera famílias de marcenaria do zero: armários, bancadas, cantos e fillers, com um tipo por largura. Revit plugin that builds casework families from scratch." />
+    <link rel="canonical" href="https://grid.arq.br/plugins/marcenaria/" />
+    <meta property="og:title" content="GRID · Marcenaria para Revit" />
+    <meta property="og:description" content="Famílias de marcenaria geradas do zero no Revit, no padrão do escritório." />
+    <meta property="og:url" content="https://grid.arq.br/plugins/marcenaria/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="GRID" />
+    <meta property="og:locale" content="pt_BR" />
+    <!-- TODO: og:image / twitter:image quando houver a imagem de prévia (img/og.jpg, 1200×630) -->
+
+    <script>
+      // Idioma: ?lang= > escolha salva > idioma do navegador
+      (function () {
+        var l;
+        try { l = new URLSearchParams(location.search).get("lang") || localStorage.getItem("grid-lang"); } catch (e) {}
+        if (l !== "pt" && l !== "en") l = /^pt/i.test(navigator.language || "") ? "pt" : "en";
+        var h = document.documentElement;
+        h.setAttribute("data-lang", l);
+        h.lang = l === "pt" ? "pt-BR" : "en";
+        if (l === "en") document.title = "GRID · Casework for Revit";
+      })();
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" />
+
+    <!-- Estatísticas (Umami, sem cookies). Só conta no domínio publicado, não ao abrir o arquivo local.
+         Eventos: data-umami-event nos links; ampliação das demos via umami.track no script do fim. -->
+    <script defer src="https://cloud.umami.is/script.js" data-website-id="afe60d64-e930-4e19-85ae-a520b32727cc" data-domains="www.grid.arq.br,grid.arq.br"></script>
+
+    <style>
+      :root {
+        --bg: #FAFAFA;
+        --surface: #FFFFFF;
+        --ink: #18181B;
+        --muted: #71717A;
+        --line: #E4E4E7;
+        --line-strong: #D4D4D8;
+        --btn-bg: #18181B;
+        --btn-ink: #FAFAFA;
+        --band-bg: #18181B;
+        --band-ink: #FAFAFA;
+        --band-muted: #A1A1AA;
+        --shadow: 0 1px 2px rgba(24, 24, 27, .04), 0 8px 24px rgba(24, 24, 27, .06);
+        --mesh: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='52'%3E%3Cpath d='M0 0H30M0 26H30M0 52H30M0 0L30 52M30 0L0 52' stroke='%23E4E4E7' fill='none'/%3E%3C/svg%3E");
+        --logo-filter: none;
+        --logo-blend: multiply;
+        --radius: 14px;
+        --sans: "Inter", "Aptos", "Segoe UI", system-ui, sans-serif;
+        --mono: "JetBrains Mono", "Aptos Mono", Consolas, monospace;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --bg: #09090B;
+          --surface: #131316;
+          --ink: #FAFAFA;
+          --muted: #A1A1AA;
+          --line: #27272A;
+          --line-strong: #3F3F46;
+          --btn-bg: #FAFAFA;
+          --btn-ink: #18181B;
+          --band-bg: #FAFAFA;
+          --band-ink: #18181B;
+          --band-muted: #52525B;
+          --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .3);
+          --mesh: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='52'%3E%3Cpath d='M0 0H30M0 26H30M0 52H30M0 0L30 52M30 0L0 52' stroke='%2327272A' fill='none'/%3E%3C/svg%3E");
+          --logo-filter: invert(1);
+          --logo-blend: screen;
+        }
+      }
+
+      * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font: 400 16px/1.55 var(--sans);
+        -webkit-font-smoothing: antialiased;
+      }
+      a { color: inherit; text-decoration: none; }
+      h1, h2, h3, p { margin: 0; }
+
+      /* Idioma */
+      html[data-lang="pt"] [data-l="en"],
+      html[data-lang="en"] [data-l="pt"] { display: none !important; }
+
+      .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+      @media (max-width: 600px) { .wrap { padding: 0 16px; } }
+
+      .eyebrow {
+        font: 500 12px/1 var(--mono);
+        letter-spacing: .12em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      /* Cabeçalho */
+      header { border-bottom: 1px solid var(--line); background: var(--bg); position: sticky; top: 0; z-index: 10; }
+      .bar { display: flex; align-items: center; justify-content: space-between; height: 64px; gap: 16px; }
+      .logo img { height: 24px; width: auto; display: block; filter: var(--logo-filter); mix-blend-mode: var(--logo-blend); }
+      .bar-right { display: flex; align-items: center; gap: 12px; }
+      .lang { display: flex; border: 1px solid var(--line-strong); border-radius: 8px; overflow: hidden; }
+      .lang button {
+        font: 500 12px/1 var(--mono);
+        letter-spacing: .06em;
+        padding: 8px 10px;
+        border: 0;
+        background: transparent;
+        color: var(--muted);
+        cursor: pointer;
+      }
+      .lang button[aria-pressed="true"] { background: var(--btn-bg); color: var(--btn-ink); }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font: 500 15px/1 var(--sans);
+        padding: 13px 18px;
+        border-radius: 8px;
+        border: 1px solid var(--btn-bg);
+        background: var(--btn-bg);
+        color: var(--btn-ink);
+        transition: opacity .15s;
+      }
+      .btn:hover { opacity: .85; }
+      .btn.small { font-size: 14px; padding: 9px 14px; }
+      .btn svg { width: 18px; height: 18px; flex: none; }
+      @media (max-width: 600px) { .bar .btn.small { display: none; } }
+
+      /* Hero */
+      .hero { position: relative; overflow: hidden; border-bottom: 1px solid var(--line); }
+      .hero-mesh {
+        position: absolute;
+        inset: 0;
+        background-image: var(--mesh);
+        background-size: 30px 52px;
+        -webkit-mask-image: radial-gradient(ellipse 60% 80% at 85% 40%, #000 0%, transparent 70%);
+        mask-image: radial-gradient(ellipse 60% 80% at 85% 40%, #000 0%, transparent 70%);
+        pointer-events: none;
+      }
+      .hero .wrap { position: relative; padding-top: 104px; padding-bottom: 96px; }
+      .hero h1 {
+        margin-top: 20px;
+        max-width: 820px;
+        font-size: clamp(36px, 6vw, 64px);
+        line-height: 1.05;
+        font-weight: 600;
+        letter-spacing: -.03em;
+        text-wrap: balance;
+      }
+      .hero p.lead { margin-top: 24px; max-width: 620px; font-size: 18px; color: var(--muted); text-wrap: pretty; }
+      @media (max-width: 600px) { .hero .wrap { padding-top: 64px; padding-bottom: 64px; } }
+
+      /* Sequência dos módulos no hero */
+      .flow { margin-top: 36px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+      .flow a {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 10px;
+        padding: 10px 14px;
+        background: var(--surface);
+        border: 1px solid var(--line-strong);
+        border-radius: 8px;
+        font-size: 15px;
+        font-weight: 500;
+        transition: border-color .15s;
+      }
+      .flow a:hover { border-color: var(--ink); }
+      .flow a .n { font: 500 12px/1 var(--mono); color: var(--muted); }
+      .flow .arrow { color: var(--muted); width: 18px; height: 18px; flex: none; }
+      @media (max-width: 600px) { .flow .arrow { display: none; } } /* na quebra de linha a seta sobrava no fim */
+
+      /* Seções */
+      section.block { padding: 96px 0; }
+      @media (max-width: 600px) { section.block { padding: 64px 0; } }
+      .head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 40px; }
+      .head h2 { margin-top: 12px; font-size: clamp(28px, 4vw, 40px); line-height: 1.1; font-weight: 600; letter-spacing: -.02em; }
+      .head p { max-width: 420px; color: var(--muted); }
+
+      /* Módulos: demo grande à esquerda, funcionalidades à direita */
+      .module {
+        display: grid;
+        grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+        gap: 48px;
+        align-items: center;
+        padding: 48px 0;
+        border-top: 1px solid var(--line);
+        scroll-margin-top: 64px;
+      }
+      .module:first-of-type { border-top: 0; padding-top: 0; }
+      @media (max-width: 860px) { .module { grid-template-columns: 1fr; gap: 24px; } }
+      .frame {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+      }
+      .module .num { font: 500 13px/1 var(--mono); color: var(--muted); }
+      .module h3 { margin-top: 14px; font-size: clamp(24px, 3vw, 30px); line-height: 1.15; font-weight: 600; letter-spacing: -.02em; }
+      .module .desc { margin-top: 12px; color: var(--muted); text-wrap: pretty; }
+      .feats { list-style: none; margin: 20px 0 0; padding: 0; }
+      .feats li {
+        position: relative;
+        padding: 10px 0 10px 22px;
+        border-top: 1px solid var(--line);
+        font-size: 15px;
+      }
+      .feats li::before {
+        content: "";
+        position: absolute;
+        left: 2px;
+        top: 18px;
+        width: 8px;
+        height: 7px;
+        background: var(--ink);
+        clip-path: polygon(50% 0, 100% 100%, 0 100%); /* triângulo da malha do logo */
+      }
+
+      /* Demos */
+      .media {
+        position: relative;
+        aspect-ratio: 1400 / 880; /* prints da janela */
+        background: var(--bg) var(--mesh);
+        background-size: 30px 52px;
+        display: grid;
+        place-items: center;
+      }
+      .media img, .media video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; }
+      .ph { font: 400 11px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); background: var(--surface); padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; }
+      .media.zoomable { cursor: zoom-in; }
+      .media.zoomable:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
+      .media .zoom {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 1;
+        width: 30px;
+        height: 30px;
+        display: grid;
+        place-items: center;
+        background: var(--surface);
+        color: var(--ink);
+        border: 1px solid var(--line-strong);
+        border-radius: 6px;
+        opacity: .85;
+        pointer-events: none;
+        transition: opacity .15s;
+      }
+      .media .zoom svg { width: 16px; height: 16px; }
+      .media.zoomable:hover .zoom, .media.zoomable:focus-visible .zoom { opacity: 1; }
+
+      /* Demo ampliada */
+      dialog.viewer { padding: 0; border: 0; background: transparent; max-width: none; max-height: none; overflow: visible; }
+      dialog.viewer::backdrop { background: rgba(9, 9, 11, .85); }
+      dialog.viewer .stage video, dialog.viewer .stage img {
+        display: block;
+        max-width: calc(100vw - 48px);
+        max-height: calc(100vh - 112px);
+        width: auto;
+        height: auto;
+        border-radius: 10px;
+        background: #FFFFFF;
+        box-shadow: 0 24px 64px rgba(0, 0, 0, .5);
+      }
+      dialog.viewer .close {
+        position: fixed;
+        top: 16px;
+        right: 16px;
+        width: 40px;
+        height: 40px;
+        display: grid;
+        place-items: center;
+        border: 1px solid rgba(250, 250, 250, .25);
+        border-radius: 8px;
+        background: rgba(24, 24, 27, .6);
+        color: #FAFAFA;
+        cursor: pointer;
+      }
+      dialog.viewer .close:hover { background: rgba(63, 63, 70, .8); }
+      dialog.viewer .close svg { width: 20px; height: 20px; }
+      html:has(dialog.viewer[open]) { overflow: hidden; }
+
+      .note { margin-top: 8px; padding-top: 24px; border-top: 1px solid var(--line); font-size: 14px; color: var(--muted); }
+
+      /* Contato */
+      .band { background: var(--band-bg); color: var(--band-ink); border-radius: 20px; padding: 64px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 32px; }
+      @media (max-width: 600px) { .band { padding: 40px 24px; border-radius: 16px; } }
+      .band h2 { font-size: clamp(26px, 3.6vw, 36px); line-height: 1.15; font-weight: 600; letter-spacing: -.02em; max-width: 560px; text-wrap: balance; }
+      .band .btn { background: var(--band-ink); color: var(--band-bg); border-color: var(--band-ink); }
+      .band > div:first-child { flex: 1 1 300px; } /* o título quebra em 2 linhas para os botões caberem ao lado */
+      .band-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+      .band .btn.outline { background: transparent; color: var(--band-ink); border-color: var(--band-muted); }
+      .band .btn.outline:hover { opacity: 1; border-color: var(--band-ink); }
+
+      footer { border-top: 1px solid var(--line); padding: 28px 0 40px; }
+      footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; font-size: 14px; color: var(--muted); }
+      footer nav { display: flex; gap: 20px; }
+      footer a:hover { color: var(--ink); }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="wrap bar">
+        <a class="logo" href="../../" aria-label="GRID">
+          <img src="../../public/playground_assets/gridlogo-200h.jpg" alt="GRID" />
+        </a>
+        <div class="bar-right">
+          <div class="lang" role="group" aria-label="Idioma / Language">
+            <button type="button" data-set-lang="pt">PT</button>
+            <button type="button" data-set-lang="en">EN</button>
+          </div>
+          <a class="btn small" href="#contato" data-umami-event="contato-menu" data-umami-event-pagina="marcenaria">
+            <span data-l="pt">Contato</span><span data-l="en">Contact</span>
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="hero-mesh" aria-hidden="true"></div>
+        <div class="wrap">
+          <div class="eyebrow"><span data-l="pt">Plugin para Revit</span><span data-l="en">Revit plugin</span></div>
+          <h1>
+            <span data-l="pt">Famílias de marcenaria geradas do zero, no padrão do escritório.</span>
+            <span data-l="en">Casework families built from scratch, to your office standard.</span>
+          </h1>
+          <p class="lead">
+            <span data-l="pt">Escolha o layout, ajuste a frente e as medidas, e o plugin cria a família completa: um tipo por largura, parâmetros para tabela e tag, materiais e giro das portas em planta.</span>
+            <span data-l="en">Pick a layout, set up the front and the dimensions, and the plugin builds the complete family: one type per width, parameters for schedules and tags, materials and door swings in plan.</span>
+          </p>
+          <nav class="flow" aria-label="Etapas / Steps">
+            <a href="#layout"><span class="n">01</span><span data-l="pt">Layout</span><span data-l="en">Layout</span></a>
+            <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M4 12h15M14 7l5 5-5 5"/></svg>
+            <a href="#frente"><span class="n">02</span><span data-l="pt">Frente e medidas</span><span data-l="en">Front &amp; dimensions</span></a>
+            <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M4 12h15M14 7l5 5-5 5"/></svg>
+            <a href="#familia"><span class="n">03</span><span data-l="pt">Família pronta</span><span data-l="en">Finished family</span></a>
+          </nav>
+        </div>
+      </section>
+
+      <section class="block" id="etapas">
+        <div class="wrap">
+          <div class="head">
+            <div>
+              <div class="eyebrow"><span data-l="pt">Como funciona</span><span data-l="en">How it works</span></div>
+              <h2><span data-l="pt">Do layout à família no projeto</span><span data-l="en">From layout to family in the project</span></h2>
+            </div>
+            <p>
+              <span data-l="pt">Tudo numa janela só, com prévia ao vivo em desenho e em 3D.</span>
+              <span data-l="en">All in one window, with a live preview in drawings and in 3D.</span>
+            </p>
+          </div>
+
+          <!-- Prints da janela: <img src="img/arquivo.webp" alt="..."> dentro do .media (amplia no clique).
+               Sem a imagem, aparece o placeholder. -->
+          <article class="module" id="layout">
+            <div class="frame">
+              <div class="media" data-shot="layout"><span class="ph">print</span></div><!-- TODO: vista do Revit com várias famílias inseridas (img/layout.webp) -->
+            </div>
+            <div>
+              <div class="num">01</div>
+              <h3>Layout</h3>
+              <p class="desc">
+                <span data-l="pt">Armários de base, aéreos e torres, bancadas, cantos e fillers, com mais de 40 layouts de frente.</span>
+                <span data-l="en">Base, wall and tall cabinets, countertops, corners and fillers, with over 40 front layouts.</span>
+              </p>
+              <ul class="feats">
+                <li><span data-l="pt">Cantos em L, cego e diagonal; bancada reta ou em L, com cuba.</span><span data-l="en">L, blind and diagonal corners; straight or L countertops, with a sink.</span></li>
+                <li><span data-l="pt">Gabinete de pia com frente falsa, duas portas ou vão livre para os joelhos (acessível).</span><span data-l="en">Sink base with a false front, two doors, or an open knee space (accessible).</span></li>
+                <li><span data-l="pt">Uma família por layout e um tipo por largura, de 12" a 48".</span><span data-l="en">One family per layout and one type per width, from 12" to 48".</span></li>
+                <li><span data-l="pt">Puxadores e cubas da biblioteca do escritório, aninhados na família.</span><span data-l="en">Handles and sinks from the office library, nested in the family.</span></li>
+              </ul>
+            </div>
+          </article>
+
+          <article class="module" id="frente">
+            <div class="frame">
+              <div class="media" data-shot="frente"><img src="img/frente.webp" alt="Campo de altura em edição: a cota correspondente acende no desenho e no 3D" loading="lazy" /></div>
+            </div>
+            <div>
+              <div class="num">02</div>
+              <h3><span data-l="pt">Frente e medidas</span><span data-l="en">Front &amp; dimensions</span></h3>
+              <p class="desc">
+                <span data-l="pt">Gavetas, portas e prateleiras montadas linha a linha, com as medidas principais à mão.</span>
+                <span data-l="en">Drawers, doors and shelves arranged row by row, with the main dimensions at hand.</span>
+              </p>
+              <ul class="feats">
+                <li><span data-l="pt">Prateleiras com espaçamento igual ou alturas digitadas, em cada linha.</span><span data-l="en">Shelves evenly spaced or at typed heights, in each row.</span></li>
+                <li><span data-l="pt">Ao editar um campo, a cota correspondente acende no desenho.</span><span data-l="en">Editing a field highlights its dimension in the drawing.</span></li>
+                <li><span data-l="pt">Prévia ao vivo em três vistas cotadas e em 3D, nas cores dos materiais do projeto.</span><span data-l="en">Live preview in three dimensioned views and in 3D, in the project's material colors.</span></li>
+                <li><span data-l="pt">Rodapé, fechaduras e giro das portas em planta configuráveis.</span><span data-l="en">Toe kick, locks and door swings in plan, all configurable.</span></li>
+              </ul>
+            </div>
+          </article>
+
+          <article class="module" id="familia">
+            <div class="frame">
+              <div class="media" data-shot="familia"><img src="img/familia.webp" alt="Armário de base com três materiais no 3D e os tipos por largura já no projeto" loading="lazy" /></div>
+            </div>
+            <div>
+              <div class="num">03</div>
+              <h3><span data-l="pt">Família pronta</span><span data-l="en">Finished family</span></h3>
+              <p class="desc">
+                <span data-l="pt">Gera as famílias, carrega no projeto e já começa a inserção.</span>
+                <span data-l="en">Builds the families, loads them into the project and starts placement.</span>
+              </p>
+              <ul class="feats">
+                <li><span data-l="pt">Sólidos presos a planos de referência: a família flexiona como uma feita à mão.</span><span data-l="en">Solids locked to reference planes: the family flexes like a hand-built one.</span></li>
+                <li><span data-l="pt">Parâmetros compartilhados prontos para tabela e tag.</span><span data-l="en">Shared parameters ready for schedules and tags.</span></li>
+                <li><span data-l="pt">Type Mark na sequência do projeto e descrição automática.</span><span data-l="en">Type Marks numbered after the project's existing ones, plus an automatic description.</span></li>
+                <li><span data-l="pt">Materiais por parâmetro: caixa, portas e gavetas, tampo e rodapé.</span><span data-l="en">Materials by parameter: cabinet, doors and drawers, countertop and toe kick.</span></li>
+              </ul>
+            </div>
+          </article>
+
+          <p class="note">
+            <span data-l="pt">Cada layout é gerado e testado nas larguras mínima, típica e máxima no Revit 2024, 2025 e 2026.</span>
+            <span data-l="en">Every layout is built and tested at its minimum, typical and maximum widths in Revit 2024, 2025 and 2026.</span>
+          </p>
+        </div>
+      </section>
+
+      <section class="block" id="contato" style="padding-top: 0">
+        <div class="wrap">
+          <div class="band">
+            <div>
+              <h2><span data-l="pt">Quer gerar as famílias de marcenaria do seu escritório?</span><span data-l="en">Want to generate your office's casework families?</span></h2>
+            </div>
+            <div class="band-actions">
+              <a class="btn" data-l="pt" href="https://wa.me/5511983744701?text=Ol%C3%A1!%20Gostaria%20de%20conversar%20sobre%20o%20plugin%20de%20marcenaria%20para%20Revit" target="_blank" rel="noopener" data-umami-event="whatsapp" data-umami-event-lang="pt" data-umami-event-pagina="marcenaria">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 20l1.3-3.9A8 8 0 1 1 8 18.8L4 20z"/></svg>
+                Falar no WhatsApp
+              </a>
+              <a class="btn" data-l="en" href="https://wa.me/5511983744701?text=Hi!%20I%27d%20like%20to%20talk%20about%20the%20casework%20plugin%20for%20Revit" target="_blank" rel="noopener" data-umami-event="whatsapp" data-umami-event-lang="en" data-umami-event-pagina="marcenaria">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 20l1.3-3.9A8 8 0 1 1 8 18.8L4 20z"/></svg>
+                Chat on WhatsApp
+              </a>
+              <a class="btn outline" data-l="pt" href="mailto:projetos@grid.arq.br?subject=Plugin%20de%20marcenaria%20para%20Revit" data-umami-event="email" data-umami-event-lang="pt" data-umami-event-pagina="marcenaria">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3.5 6h17v12h-17z"/><path d="M3.5 6.5l8.5 6.5 8.5-6.5"/></svg>
+                projetos@grid.arq.br
+              </a>
+              <a class="btn outline" data-l="en" href="mailto:projetos@grid.arq.br?subject=Casework%20plugin%20for%20Revit" data-umami-event="email" data-umami-event-lang="en" data-umami-event-pagina="marcenaria">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3.5 6h17v12h-17z"/><path d="M3.5 6.5l8.5 6.5 8.5-6.5"/></svg>
+                projetos@grid.arq.br
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap">
+        <span>© 2026 GRID</span>
+        <nav>
+          <a href="../../auto/"><span data-l="pt">Automações</span><span data-l="en">Automations</span></a>
+          <a href="../../">grid.arq.br</a>
+        </nav>
+      </div>
+    </footer>
+
+    <dialog class="viewer" id="viewer">
+      <button type="button" class="close" data-close>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+      <div class="stage"></div>
+    </dialog>
+
+    <script>
+      (function () {
+        var h = document.documentElement;
+        var buttons = document.querySelectorAll("[data-set-lang]");
+        function setLang(l) {
+          h.setAttribute("data-lang", l);
+          h.lang = l === "pt" ? "pt-BR" : "en";
+          document.title = l === "pt" ? "GRID · Marcenaria para Revit" : "GRID · Casework for Revit";
+          for (var i = 0; i < buttons.length; i++) {
+            buttons[i].setAttribute("aria-pressed", buttons[i].getAttribute("data-set-lang") === l ? "true" : "false");
+          }
+        }
+        for (var i = 0; i < buttons.length; i++) {
+          buttons[i].addEventListener("click", function () {
+            var l = this.getAttribute("data-set-lang");
+            setLang(l);
+            try { localStorage.setItem("grid-lang", l); } catch (e) {}
+          });
+        }
+        setLang(h.getAttribute("data-lang"));
+      })();
+
+      // Demos (igual à /auto): o vídeo carrega quando chega perto da tela e só toca enquanto aparece.
+      // Sem o arquivo, fica o que estiver no .media (print ou placeholder). Clique abre a demo grande.
+      // Com "reduzir movimento" ligado, nada toca sozinho; na demo grande aparecem os controles.
+      (function () {
+        var h = document.documentElement;
+        var boxes = document.querySelectorAll(".media");
+        var vids = document.querySelectorAll(".media[data-video]");
+        var still = !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
+        var dlg = document.getElementById("viewer");
+        var stage = dlg.querySelector(".stage");
+        var current = null;
+        var ZOOM_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg>';
+
+        function play(v) {
+          var p = v.play();
+          if (p && p.catch) p.catch(function () {});
+        }
+        function labels() {
+          var en = h.getAttribute("data-lang") === "en";
+          var z = document.querySelectorAll(".media.zoomable");
+          for (var i = 0; i < z.length; i++) z[i].setAttribute("aria-label", en ? "Enlarge demo" : "Ampliar demonstração");
+          dlg.querySelector("[data-close]").setAttribute("aria-label", en ? "Close" : "Fechar");
+        }
+        function zoomable(box) {
+          if (box.classList.contains("zoomable")) return;
+          box.classList.add("zoomable");
+          box.setAttribute("role", "button");
+          box.setAttribute("tabindex", "0");
+          var z = document.createElement("span");
+          z.className = "zoom";
+          z.innerHTML = ZOOM_ICON;
+          box.appendChild(z);
+          labels();
+        }
+        function load(box) {
+          if (box.getAttribute("data-state")) return;
+          box.setAttribute("data-state", "loading");
+          var v = document.createElement("video");
+          var img = box.querySelector("img");
+          v.muted = true;
+          v.loop = true;
+          v.playsInline = true;
+          v.preload = "auto";
+          v.setAttribute("muted", "");
+          v.setAttribute("playsinline", "");
+          if (img) v.poster = img.getAttribute("src");
+          v.addEventListener("loadeddata", function () {
+            var old = box.querySelector("img, .ph");
+            if (old) box.removeChild(old);
+            box.setAttribute("data-state", "ready");
+            zoomable(box);
+          });
+          v.addEventListener("error", function () {
+            if (current === box) dlg.close();
+            if (v.parentNode) v.parentNode.removeChild(v);
+            box.setAttribute("data-state", "missing");
+          });
+          v.src = box.getAttribute("data-video");
+          // No iPhone (Safari e Chrome usam o WebKit) o vídeo só baixa se estiver na página e
+          // mandado tocar: entra por baixo do print, que sai quando chega o primeiro quadro
+          box.insertBefore(v, box.firstChild);
+          if (!still && box.near && box !== current) play(v);
+        }
+
+        // Demo grande: o próprio vídeo (ou imagem) vai para o <dialog> e volta ao fechar,
+        // sem recarregar e no mesmo ponto
+        function open(box) {
+          var el = box.querySelector("video") || box.querySelector("img");
+          if (!el) return;
+          if (!dlg.showModal) { window.open(el.currentSrc || el.src, "_blank"); return; }
+          current = box;
+          if (el.tagName === "VIDEO") el.controls = true;
+          stage.appendChild(el);
+          dlg.showModal();
+          if (el.tagName === "VIDEO" && !still) play(el);
+          // Estatística: qual print foi ampliado (data-shot "layout" → "marcenaria/layout")
+          if (window.umami && umami.track) {
+            umami.track("demo-ampliada", {
+              ferramenta: "marcenaria/" + (box.getAttribute("data-video") || box.getAttribute("data-shot") || "").replace(/^.*\/|\.\w+$/g, ""),
+              lang: h.getAttribute("data-lang")
+            });
+          }
+        }
+        dlg.addEventListener("close", function () {
+          var box = current, el = stage.firstChild;
+          current = null;
+          if (!box || !el) return;
+          if (el.tagName === "IMG" && box.getAttribute("data-state") === "ready") {
+            stage.removeChild(el);
+            el = box.querySelector("video");
+          } else if (el.tagName === "IMG") {
+            box.appendChild(el);
+          } else {
+            box.insertBefore(el, box.firstChild);
+          }
+          if (el.tagName === "VIDEO") {
+            el.controls = false;
+            if (box.near && !still) play(el); else el.pause();
+          }
+          box.focus({ preventScroll: true });
+        });
+        dlg.addEventListener("click", function (e) {
+          if (e.target === dlg || e.target.closest("[data-close]")) dlg.close();
+        });
+
+        for (var i = 0; i < boxes.length; i++) {
+          if (boxes[i].querySelector("img")) zoomable(boxes[i]);
+          boxes[i].addEventListener("click", function () {
+            if (this.classList.contains("zoomable")) open(this);
+          });
+          boxes[i].addEventListener("keydown", function (e) {
+            if (!this.classList.contains("zoomable")) return;
+            if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(this); }
+          });
+        }
+        document.addEventListener("click", function (e) {
+          if (e.target.closest && e.target.closest("[data-set-lang]")) labels();
+        });
+        labels();
+
+        if (!("IntersectionObserver" in window)) {
+          for (var k = 0; k < vids.length; k++) { vids[k].near = true; load(vids[k]); }
+          return;
+        }
+        var io = new IntersectionObserver(function (entries) {
+          for (var i = 0; i < entries.length; i++) {
+            var box = entries[i].target;
+            box.near = entries[i].isIntersecting;
+            if (box.near) load(box);
+            var v = box.querySelector("video");
+            if (!v || still) continue;
+            if (box.near && box !== current) play(v); else v.pause();
+          }
+        }, { rootMargin: "200px 0px" });
+        for (var j = 0; j < vids.length; j++) io.observe(vids[j]);
+      })();
+    </script>
+  </body>
+</html>
