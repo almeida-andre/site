@@ -1,13 +1,13 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>GRID · GRC Steel Frame Layout</title>
-    <meta name="description" content="Case study: a parametric Grasshopper definition that turns a curved GRC panel surface into a steel stud frame, flex anchors, hanging connectors and lining, built step by step with Claude and Rhino MCP." />
+    <meta name="description" content="From a curved GRC panel surface to a buildable steel stud frame: Grasshopper definition, Rhino 9 plug-in and web viewer. Do painel GRC curvo ao quadro de aço: definição Grasshopper, plug-in para Rhino 9 e visualizador web." />
     <link rel="canonical" href="https://grid.arq.br/grc-steelframelayout/" />
     <meta property="og:title" content="GRID · GRC Steel Frame Layout" />
-    <meta property="og:description" content="From a curved GRC panel surface to a steel stud frame, flex anchors, connectors and lining: a Grasshopper definition built step by step." />
+    <meta property="og:description" content="From a curved GRC panel surface to a buildable steel stud frame: Grasshopper, a Rhino 9 plug-in and a web viewer." />
     <meta property="og:url" content="https://grid.arq.br/grc-steelframelayout/" />
     <meta property="og:type" content="article" />
     <meta property="og:site_name" content="GRID" />
@@ -17,6 +17,19 @@
     <meta property="og:image:alt" content="Back of a curved GRC panel with its steel stud frame, flex anchors and hanging connectors" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:image" content="https://grid.arq.br/grc-steelframelayout/img/og.jpg" />
+
+    <script>
+      // Idioma: ?lang= > escolha salva > idioma do navegador (mesma regra da /auto)
+      (function () {
+        var l;
+        try { l = new URLSearchParams(location.search).get("lang") || localStorage.getItem("grid-lang"); } catch (e) {}
+        if (l !== "pt" && l !== "en") l = /^pt/i.test(navigator.language || "") ? "pt" : "en";
+        var h = document.documentElement;
+        h.setAttribute("data-lang", l);
+        h.lang = l === "pt" ? "pt-BR" : "en";
+        if (l === "pt") document.title = "GRID · Quadro de aço para painel GRC";
+      })();
+    </script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -40,7 +53,6 @@
         --fix: #B45309; --fix-bg: #FEF3C7;
         --derive: #6D28D9; --derive-bg: #EDE9FE;
         --done: #15803D; --done-bg: #DCFCE7;
-        --wip: #B45309; --wip-bg: #FEF3C7;
         --shadow: 0 1px 2px rgba(24, 24, 27, .04), 0 8px 24px rgba(24, 24, 27, .06);
         --mesh: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='52'%3E%3Cpath d='M0 0H30M0 26H30M0 52H30M0 0L30 52M30 0L0 52' stroke='%23E4E4E7' fill='none'/%3E%3C/svg%3E");
         --logo-filter: none;
@@ -63,7 +75,6 @@
           --fix: #FCD34D; --fix-bg: #4A3410;
           --derive: #C4B5FD; --derive-bg: #35265F;
           --done: #86EFAC; --done-bg: #14532D;
-          --wip: #FCD34D; --wip-bg: #4A3410;
           --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .3);
           --mesh: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='52'%3E%3Cpath d='M0 0H30M0 26H30M0 52H30M0 0L30 52M30 0L0 52' stroke='%2327272A' fill='none'/%3E%3C/svg%3E");
           --logo-filter: invert(1);
@@ -73,154 +84,105 @@
 
       * { box-sizing: border-box; }
       html { scroll-behavior: smooth; }
-      body {
-        margin: 0;
-        background: var(--bg);
-        color: var(--ink);
-        font: 400 16px/1.6 var(--sans);
-        -webkit-font-smoothing: antialiased;
-      }
+      body { margin: 0; background: var(--bg); color: var(--ink); font: 400 16px/1.6 var(--sans); -webkit-font-smoothing: antialiased; }
       a { color: inherit; }
-      h1, h2, h3, h4, p, ul, ol, figure, dl, dd { margin: 0; }
-      code, .mono { font-family: var(--mono); font-size: .9em; }
+      h1, h2, h3, h4, p, ul, figure, dl, dd { margin: 0; }
+      code { font-family: var(--mono); font-size: .9em; }
+
+      /* Idioma */
+      html[data-lang="pt"] [data-l="en"],
+      html[data-lang="en"] [data-l="pt"] { display: none !important; }
 
       .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
       @media (max-width: 600px) { .wrap { padding: 0 16px; } }
-
-      .eyebrow {
-        font: 500 12px/1 var(--mono);
-        letter-spacing: .12em;
-        text-transform: uppercase;
-        color: var(--muted);
-      }
+      .eyebrow { font: 500 12px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+      .muted { color: var(--muted); }
 
       /* Cabeçalho */
       header { border-bottom: 1px solid var(--line); background: var(--bg); position: sticky; top: 0; z-index: 10; }
       .bar { display: flex; align-items: center; justify-content: space-between; height: 64px; gap: 16px; }
       .logo img { height: 24px; width: auto; display: block; filter: var(--logo-filter); mix-blend-mode: var(--logo-blend); }
-      .bar nav { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
-      .bar nav::-webkit-scrollbar { display: none; }
-      .bar nav a {
-        font: 500 12px/1 var(--mono);
-        letter-spacing: .04em;
-        padding: 8px 9px;
-        border-radius: 6px;
-        color: var(--muted);
-        text-decoration: none;
-        white-space: nowrap;
-      }
+      .bar-right { display: flex; align-items: center; gap: 12px; }
+      .bar nav { display: flex; gap: 2px; }
+      .bar nav a { font: 500 12px/1 var(--mono); padding: 8px 8px; border-radius: 6px; color: var(--muted); text-decoration: none; }
       .bar nav a:hover { color: var(--ink); background: var(--surface); }
-      @media (max-width: 720px) { .bar nav { display: none; } }
+      @media (max-width: 760px) { .bar nav { display: none; } }
+      .lang { display: flex; border: 1px solid var(--line-strong); border-radius: 8px; overflow: hidden; }
+      .lang button { font: 500 12px/1 var(--mono); letter-spacing: .06em; padding: 8px 10px; border: 0; background: transparent; color: var(--muted); cursor: pointer; }
+      .lang button[aria-pressed="true"] { background: var(--btn-bg); color: var(--btn-ink); }
 
       /* Hero */
       .hero { position: relative; overflow: hidden; border-bottom: 1px solid var(--line); }
       .hero-mesh {
-        position: absolute;
-        inset: 0;
-        background-image: var(--mesh);
-        background-size: 30px 52px;
+        position: absolute; inset: 0; background-image: var(--mesh); background-size: 30px 52px; pointer-events: none;
         -webkit-mask-image: radial-gradient(ellipse 60% 80% at 85% 40%, #000 0%, transparent 70%);
         mask-image: radial-gradient(ellipse 60% 80% at 85% 40%, #000 0%, transparent 70%);
-        pointer-events: none;
       }
-      .hero .wrap { position: relative; padding-top: 96px; padding-bottom: 88px; }
-      .hero h1 {
-        margin-top: 18px;
-        max-width: 820px;
-        font-size: clamp(34px, 5.6vw, 60px);
-        line-height: 1.05;
-        font-weight: 600;
-        letter-spacing: -.03em;
-        text-wrap: balance;
-      }
-      .hero p.lead { margin-top: 24px; max-width: 640px; font-size: 18px; color: var(--muted); text-wrap: pretty; }
-      .tags { margin-top: 28px; display: flex; flex-wrap: wrap; gap: 8px; }
-      .tag { font: 500 12px/1 var(--mono); padding: 7px 10px; border: 1px solid var(--line-strong); border-radius: 6px; color: var(--muted); background: var(--bg); }
-      @media (max-width: 600px) { .hero .wrap { padding-top: 64px; padding-bottom: 64px; } }
+      .hero .wrap { position: relative; padding-top: 88px; padding-bottom: 80px; }
+      .hero h1 { margin-top: 18px; max-width: 800px; font-size: clamp(34px, 5.6vw, 58px); line-height: 1.05; font-weight: 600; letter-spacing: -.03em; text-wrap: balance; }
+      .hero p.lead { margin-top: 22px; max-width: 600px; font-size: 18px; color: var(--muted); text-wrap: pretty; }
+      @media (max-width: 600px) { .hero .wrap { padding-top: 60px; padding-bottom: 60px; } }
 
       /* Pipeline */
-      .pipeline { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0; margin-top: 56px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); overflow: hidden; }
-      .pipeline a { display: block; padding: 18px 16px 20px; text-decoration: none; border-left: 1px solid var(--line); transition: background .15s; }
-      .pipeline a:first-child { border-left: 0; }
+      .pipeline { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 48px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); overflow: hidden; }
+      .pipeline a { display: block; padding: 16px 16px 18px; text-decoration: none; border-left: 1px solid var(--line); transition: background .15s; }
+      .pipeline a:nth-child(4n+1) { border-left: 0; }
+      .pipeline a:nth-child(n+5) { border-top: 1px solid var(--line); }
       .pipeline a:hover { background: var(--bg); }
       .pipeline .n { font: 500 12px/1 var(--mono); color: var(--muted); display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-      .pipeline b { display: block; margin-top: 12px; font-size: 14.5px; line-height: 1.3; font-weight: 600; }
-      .pipeline a.planned b { color: var(--muted); }
-      @media (max-width: 900px) {
-        .pipeline { grid-template-columns: repeat(3, 1fr); }
-        .pipeline a:nth-child(4) { border-left: 0; }
-        .pipeline a:nth-child(n+4) { border-top: 1px solid var(--line); }
-      }
-      @media (max-width: 520px) {
-        .pipeline { grid-template-columns: repeat(2, 1fr); }
-        .pipeline a:nth-child(4) { border-left: 1px solid var(--line); }
+      .pipeline b { display: block; margin-top: 10px; font-size: 14.5px; line-height: 1.3; font-weight: 600; }
+      .pipeline a.next b { color: var(--muted); }
+      @media (max-width: 640px) {
+        .pipeline { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .pipeline a { border-left: 1px solid var(--line); }
         .pipeline a:nth-child(odd) { border-left: 0; }
         .pipeline a:nth-child(n+3) { border-top: 1px solid var(--line); }
       }
 
       .status { display: inline-block; font: 600 10.5px/1.6 var(--sans); letter-spacing: .06em; text-transform: uppercase; padding: 1px 7px; border-radius: 999px; white-space: nowrap; }
       .status.done { color: var(--done); background: var(--done-bg); }
-      .status.wip { color: var(--wip); background: var(--wip-bg); }
-      .status.planned { color: var(--muted); background: transparent; border: 1px dashed var(--line-strong); }
+      .status.next { color: var(--muted); border: 1px dashed var(--line-strong); }
 
       /* Seções */
-      section.block { padding: 96px 0; border-bottom: 1px solid var(--line); }
-      @media (max-width: 600px) { section.block { padding: 64px 0; } }
-      .head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px 48px; align-items: end; margin-bottom: 40px; }
+      section.block { padding: 80px 0; border-bottom: 1px solid var(--line); }
+      @media (max-width: 600px) { section.block { padding: 56px 0; } }
+      .head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px 48px; align-items: end; margin-bottom: 32px; }
       @media (max-width: 820px) { .head { grid-template-columns: 1fr; } }
-      .head h2 { margin-top: 12px; font-size: clamp(28px, 4vw, 40px); line-height: 1.1; font-weight: 600; letter-spacing: -.02em; text-wrap: balance; }
+      .head h2 { margin-top: 12px; font-size: clamp(26px, 3.6vw, 38px); line-height: 1.1; font-weight: 600; letter-spacing: -.02em; text-wrap: balance; }
       .head p { color: var(--muted); text-wrap: pretty; }
       .step-label { display: flex; align-items: center; gap: 12px; }
-      .step-num { font: 500 13px/1 var(--mono); color: var(--ink); border: 1px solid var(--line-strong); border-radius: 6px; padding: 6px 8px; }
+      .step-num { font: 500 13px/1 var(--mono); border: 1px solid var(--line-strong); border-radius: 6px; padding: 6px 8px; }
 
-      .prose { max-width: 720px; }
-      .prose p + p { margin-top: 14px; }
-      .muted { color: var(--muted); }
-
-      h3.sub { font-size: 13px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 48px 0 16px; }
-      h3.sub:first-child { margin-top: 0; }
-
-      /* Grade de cartões */
-      .grid { display: grid; gap: 20px; }
-      .grid.c2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .grid.c3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-      .grid.c4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-      @media (max-width: 900px) { .grid.c4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .grid.c3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-      @media (max-width: 640px) { .grid.c2, .grid.c3, .grid.c4 { grid-template-columns: 1fr; } }
-
-      .card {
-        background: var(--surface);
-        border: 1px solid var(--line);
-        border-radius: var(--radius);
-        box-shadow: var(--shadow);
-        padding: 20px 22px 22px;
-      }
-      .card h4 { font-size: 16px; font-weight: 600; letter-spacing: -.01em; }
-      .card p { margin-top: 6px; font-size: 14.5px; color: var(--muted); }
-      .card .k { font: 500 12px/1 var(--mono); color: var(--muted); }
-
-      /* Lista de regras */
-      .rules { list-style: none; padding: 0; border-top: 1px solid var(--line); }
-      .rules li { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
-      .rules li > span:first-child { font-weight: 600; }
-      .rules li > span:last-child { color: var(--muted); }
-      @media (max-width: 640px) { .rules li { grid-template-columns: 1fr; gap: 2px; } }
+      /* Pontos-chave */
+      .points { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 32px; margin-bottom: 32px; }
+      .points li { padding-top: 12px; border-top: 1px solid var(--line); font-size: 15px; color: var(--muted); }
+      .points li b { display: block; color: var(--ink); font-weight: 600; }
+      @media (max-width: 820px) { .points { grid-template-columns: 1fr; } }
 
       /* Figuras */
-      figure.shot { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
-      figure.shot .img { position: relative; background: var(--shot-bg); cursor: zoom-in; }
-      figure.shot img { display: block; width: 100%; height: auto; }
-      figure.shot figcaption { padding: 12px 16px 14px; font-size: 13.5px; color: var(--muted); border-top: 1px solid var(--line); }
-      figure.shot figcaption b { color: var(--ink); font-weight: 600; }
-      .figs { display: grid; gap: 20px; margin-top: 32px; }
+      .figs { display: grid; gap: 20px; }
+      .figs + .figs { margin-top: 20px; }
       .figs.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      @media (max-width: 760px) { .figs.two { grid-template-columns: 1fr; } }
+      .figs.ui { grid-template-columns: minmax(0, 1fr) 240px; align-items: start; }
+      .figs.r21 { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); align-items: start; }
+      .figs.r32 { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); align-items: start; }
+      .figs .col { display: grid; gap: 20px; }
+      @media (max-width: 760px) {
+        .figs.two, .figs.ui, .figs.r21, .figs.r32 { grid-template-columns: 1fr; }
+        .figs.ui > figure:last-child { max-width: 280px; }
+      }
+      figure.shot { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
+      figure.shot .img { background: var(--shot-bg); cursor: zoom-in; }
+      figure.shot .img.light { background: #F4F4F4; }
+      figure.shot img { display: block; width: 100%; height: auto; }
+      figure.shot figcaption { padding: 10px 14px 12px; font-size: 13.5px; color: var(--muted); border-top: 1px solid var(--line); }
+      figure.shot figcaption b { color: var(--ink); font-weight: 600; }
 
       /* Números */
-      .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); overflow: hidden; }
-      .stat { padding: 18px 20px; border-left: 1px solid var(--line); }
+      .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); overflow: hidden; margin-top: 20px; }
+      .stat { padding: 16px 18px; border-left: 1px solid var(--line); }
       .stat:first-child { border-left: 0; }
-      .stat b { display: block; font-size: 26px; line-height: 1.1; font-weight: 600; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+      .stat b { display: block; font-size: 24px; line-height: 1.1; font-weight: 600; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
       .stat span { display: block; margin-top: 6px; font-size: 13px; color: var(--muted); }
       @media (max-width: 760px) {
         .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -228,122 +190,46 @@
         .stat:nth-child(n+3) { border-top: 1px solid var(--line); }
       }
 
-      /* Tabelas */
-      .tablewrap { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow-x: auto; }
-      table { border-collapse: collapse; width: 100%; font-size: 14px; }
-      th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
-      tbody tr:last-child td { border-bottom: 0; }
-      th { color: var(--muted); font-weight: 600; font-size: 12.5px; white-space: nowrap; background: var(--surface); }
-      td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-      .compare { min-width: 560px; }
-
-      /* Arquivos */
-      .files { display: flex; flex-wrap: wrap; gap: 8px; }
-      .file { font: 400 12.5px/1 var(--mono); padding: 7px 10px; border-radius: 6px; background: var(--surface); border: 1px solid var(--line); color: var(--ink); }
-
-      /* Anatomia do prompt */
-      .anatomy { counter-reset: a; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--surface); }
-      .anatomy div { padding: 18px 18px 20px; border-left: 1px solid var(--line); border-top: 1px solid var(--line); }
-      .anatomy div:nth-child(4n+1) { border-left: 0; }
-      .anatomy div:nth-child(-n+4) { border-top: 0; }
-      .anatomy div::before { counter-increment: a; content: counter(a, decimal-leading-zero); font: 500 12px/1 var(--mono); color: var(--muted); }
-      .anatomy h4 { margin-top: 10px; font-size: 15px; font-weight: 600; }
-      .anatomy p { margin-top: 4px; font-size: 13.5px; color: var(--muted); }
-      @media (max-width: 820px) {
-        .anatomy { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        .anatomy div { border-left: 1px solid var(--line); border-top: 1px solid var(--line); }
-        .anatomy div:nth-child(odd) { border-left: 0; }
-        .anatomy div:nth-child(-n+2) { border-top: 0; }
-      }
+      /* Botões */
+      .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+      .btn { display: inline-flex; align-items: center; gap: 8px; font: 500 14px/1 var(--sans); padding: 11px 16px; border-radius: 8px; border: 1px solid var(--btn-bg); background: var(--btn-bg); color: var(--btn-ink); text-decoration: none; transition: opacity .15s; }
+      .btn:hover { opacity: .85; }
+      .btn.outline { background: transparent; color: var(--ink); border-color: var(--line-strong); }
+      .btn svg { width: 16px; height: 16px; flex: none; }
 
       /* Revisão de parâmetros */
       .badge { display: inline-block; padding: 2px 9px; border-radius: 999px; font: 600 11.5px/1.6 var(--sans); letter-spacing: .04em; }
       .badge.KEEP { color: var(--keep); background: var(--keep-bg); }
       .badge.FIX { color: var(--fix); background: var(--fix-bg); }
       .badge.DERIVE { color: var(--derive); background: var(--derive-bg); }
-      .pcard { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; display: flex; flex-direction: column; }
-      .pcard .img { aspect-ratio: 16 / 10; background: var(--shot-bg); cursor: zoom-in; }
-      .pcard img { width: 100%; height: 100%; object-fit: cover; display: block; }
-      .pcard .body { padding: 16px 18px 18px; border-top: 1px solid var(--line); }
-      .pcard .top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-      .pcard .pname { font: 600 17px/1.2 var(--mono); }
-      .pcard dl { margin-top: 12px; }
-      .pcard .row { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 10px; padding: 7px 0; border-top: 1px solid var(--line); font-size: 13.5px; }
-      .pcard dt { color: var(--muted); }
-
-      .counts { display: flex; flex-wrap: wrap; gap: 10px; }
-      .count { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; min-width: 128px; }
+      .counts { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 24px; }
+      .count { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; min-width: 120px; }
       .count b { display: block; font-size: 24px; line-height: 1.1; font-weight: 600; font-variant-numeric: tabular-nums; }
       .count span { font-size: 13px; color: var(--muted); }
-
-      .filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 20px 0 12px; }
-      .filters .lbl { font: 500 11px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-right: 2px; }
-      .filters .sep { width: 1px; height: 22px; background: var(--line-strong); margin: 0 8px; }
-      .filters button {
-        border: 1px solid var(--line-strong);
-        background: var(--surface);
-        color: var(--ink);
-        border-radius: 8px;
-        padding: 6px 12px;
-        font: 500 13px/1.2 var(--sans);
-        cursor: pointer;
-      }
-      .filters button[aria-pressed="true"] { background: var(--btn-bg); color: var(--btn-ink); border-color: var(--btn-bg); }
-      .filters input {
-        flex: 1 1 180px;
-        min-width: 0;
-        max-width: 260px;
-        border: 1px solid var(--line-strong);
-        background: var(--surface);
-        color: var(--ink);
-        border-radius: 8px;
-        padding: 7px 12px;
-        font: 400 13.5px/1.2 var(--sans);
-      }
-      #inv { min-width: 900px; font-size: 13.5px; }
-      #inv thead th { position: sticky; top: 0; cursor: pointer; user-select: none; }
-      #inv thead th:hover { color: var(--ink); }
-      #inv thead th[aria-sort="ascending"]::after { content: " ↑"; }
-      #inv thead th[aria-sort="descending"]::after { content: " ↓"; }
-      #inv td.name { font-family: var(--mono); font-size: 13px; white-space: nowrap; }
-      #inv td.small { font-size: 12.5px; color: var(--muted); }
-      #inv td.becomes { font-family: var(--mono); font-size: 12px; }
-      .inv-scroll { max-height: 560px; overflow: auto; }
-      .inv-note { margin-top: 10px; font-size: 13px; color: var(--muted); }
+      .pcards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+      @media (max-width: 900px) { .pcards { grid-template-columns: 1fr; max-width: 520px; } }
+      .pcard { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+      .pcard .img { aspect-ratio: 16 / 10; background: var(--shot-bg); cursor: zoom-in; }
+      .pcard img { width: 100%; height: 100%; object-fit: cover; display: block; }
+      .pcard .body { padding: 14px 16px 16px; border-top: 1px solid var(--line); }
+      .pcard .top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+      .pcard .pname { font: 600 16px/1.2 var(--mono); }
+      .pcard p { margin-top: 8px; font-size: 13.5px; color: var(--muted); }
 
       /* Próximas etapas */
-      .planned-box { border: 1px dashed var(--line-strong); border-radius: var(--radius); padding: 28px; background: transparent; }
-      .planned-box ul { margin-top: 12px; padding-left: 20px; color: var(--muted); }
-      .planned-box li + li { margin-top: 6px; }
-      .planned-box .note { margin-top: 16px; font-size: 13.5px; color: var(--muted); }
+      .next-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+      @media (max-width: 760px) { .next-grid { grid-template-columns: 1fr; } }
+      .next-box { border: 1px dashed var(--line-strong); border-radius: var(--radius); padding: 24px; }
+      .next-box .step-label { margin-bottom: 14px; }
+      .next-box h3 { font-size: 20px; font-weight: 600; letter-spacing: -.01em; }
+      .next-box p { margin-top: 8px; color: var(--muted); font-size: 15px; }
 
       /* Imagem ampliada */
       dialog.viewer { padding: 0; border: 0; background: transparent; max-width: none; max-height: none; overflow: visible; }
       dialog.viewer::backdrop { background: rgba(9, 9, 11, .88); }
-      dialog.viewer img {
-        display: block;
-        max-width: calc(100vw - 32px);
-        max-height: calc(100vh - 96px);
-        width: auto;
-        height: auto;
-        border-radius: 10px;
-        box-shadow: 0 24px 64px rgba(0, 0, 0, .5);
-      }
+      dialog.viewer img { display: block; max-width: calc(100vw - 32px); max-height: calc(100vh - 96px); width: auto; height: auto; border-radius: 10px; box-shadow: 0 24px 64px rgba(0, 0, 0, .5); }
       dialog.viewer .cap { margin-top: 12px; max-width: calc(100vw - 32px); color: #E4E4E7; font-size: 13.5px; text-align: center; }
-      dialog.viewer .close {
-        position: fixed;
-        top: 16px;
-        right: 16px;
-        width: 40px;
-        height: 40px;
-        display: grid;
-        place-items: center;
-        border: 1px solid rgba(250, 250, 250, .25);
-        border-radius: 8px;
-        background: rgba(24, 24, 27, .6);
-        color: #FAFAFA;
-        cursor: pointer;
-      }
+      dialog.viewer .close { position: fixed; top: 16px; right: 16px; width: 40px; height: 40px; display: grid; place-items: center; border: 1px solid rgba(250, 250, 250, .25); border-radius: 8px; background: rgba(24, 24, 27, .6); color: #FAFAFA; cursor: pointer; }
       dialog.viewer .close svg { width: 20px; height: 20px; }
       html:has(dialog.viewer[open]) { overflow: hidden; }
 
@@ -356,19 +242,17 @@
   <body>
     <header>
       <div class="wrap bar">
-        <a class="logo" href="../" aria-label="GRID">
-          <img src="../public/playground_assets/gridlogo-200h.jpg" alt="GRID" />
-        </a>
-        <nav aria-label="Sections">
-          <a href="#assignment">Assignment</a>
-          <a href="#method">Method</a>
-          <a href="#step-01">01</a>
-          <a href="#step-02">02</a>
-          <a href="#step-03">03</a>
-          <a href="#step-04">04</a>
-          <a href="#step-05">05</a>
-          <a href="#step-06">06</a>
-        </nav>
+        <a class="logo" href="../" aria-label="GRID"><img src="../public/playground_assets/gridlogo-200h.jpg" alt="GRID" /></a>
+        <div class="bar-right">
+          <nav aria-label="Steps">
+            <a href="#step-01">01</a><a href="#step-02">02</a><a href="#step-03">03</a><a href="#step-04">04</a>
+            <a href="#step-05">05</a><a href="#step-06">06</a><a href="#next">07–08</a>
+          </nav>
+          <div class="lang" role="group" aria-label="Idioma / Language">
+            <button type="button" data-set-lang="pt">PT</button>
+            <button type="button" data-set-lang="en">EN</button>
+          </div>
+        </div>
       </div>
     </header>
 
@@ -377,101 +261,46 @@
       <section class="hero">
         <div class="hero-mesh" aria-hidden="true"></div>
         <div class="wrap">
-          <div class="eyebrow">Case study · Façade engineering</div>
-          <h1>A curved GRC panel and its steel stud frame, built step by step in Grasshopper.</h1>
-          <p class="lead">One surface goes in. The panel, its steel stud frame, the flex anchors, the hanging connectors, the lining and the closing piece come out, with member lists ready for fabrication. Each step was written as a precise brief and run in Rhino through Claude and the Rhino MCP, with a stop for review before anything was built.</p>
-          <div class="tags">
-            <span class="tag">Rhino 8</span>
-            <span class="tag">Grasshopper</span>
-            <span class="tag">Python 3 components</span>
-            <span class="tag">Claude + Rhino MCP</span>
-            <span class="tag">Rhino.Inside.Revit (next)</span>
-            <span class="tag">Revit</span>
-          </div>
+          <div class="eyebrow"><span data-l="en">Case study · Façade engineering</span><span data-l="pt">Estudo de caso · Engenharia de fachadas</span></div>
+          <h1>
+            <span data-l="en">From a curved GRC surface to a buildable steel frame.</span>
+            <span data-l="pt">De uma superfície curva de GRC a um quadro de aço pronto para fabricar.</span>
+          </h1>
+          <p class="lead">
+            <span data-l="en">One finish surface in; panel, stud frame, anchors, connectors, lining and fabrication lists out. Built step by step in Grasshopper with Claude and the Rhino MCP, then turned into a Rhino 9 plug-in and a web viewer.</span>
+            <span data-l="pt">Entra uma superfície de acabamento; saem o painel, o quadro de montantes, as ancoragens, os conectores, o revestimento e as listas de fabricação. Feito etapa por etapa no Grasshopper com o Claude e o Rhino MCP, depois virou um plug-in para Rhino 9 e um visualizador web.</span>
+          </p>
 
-          <div class="pipeline" role="list">
-            <a href="#step-01" role="listitem"><span class="n">01 <span class="status done">Done</span></span><b>GRC panel</b></a>
-            <a href="#step-02" role="listitem"><span class="n">02 <span class="status done">Done</span></span><b>Stud frame + flex anchors</b></a>
-            <a href="#step-03" role="listitem"><span class="n">03 <span class="status done">Done</span></span><b>Connectors, lining, closing piece</b></a>
-            <a href="#step-04" role="listitem"><span class="n">04 <span class="status wip">In review</span></span><b>Parameter review</b></a>
-            <a href="#step-05" role="listitem" class="planned"><span class="n">05 <span class="status planned">Next</span></span><b>Link to Revit</b></a>
-            <a href="#step-06" role="listitem" class="planned"><span class="n">06 <span class="status planned">Next</span></span><b>Documentation</b></a>
+          <div class="pipeline">
+            <a href="#step-01"><span class="n">01 <span class="status done"><span data-l="en">Done</span><span data-l="pt">Pronto</span></span></span><b><span data-l="en">GRC panel</span><span data-l="pt">Painel GRC</span></b></a>
+            <a href="#step-02"><span class="n">02 <span class="status done"><span data-l="en">Done</span><span data-l="pt">Pronto</span></span></span><b><span data-l="en">Stud frame + anchors</span><span data-l="pt">Quadro + ancoragens</span></b></a>
+            <a href="#step-03"><span class="n">03 <span class="status done"><span data-l="en">Done</span><span data-l="pt">Pronto</span></span></span><b><span data-l="en">Connectors + lining</span><span data-l="pt">Conectores + revestimento</span></b></a>
+            <a href="#step-04"><span class="n">04 <span class="status done"><span data-l="en">Done</span><span data-l="pt">Pronto</span></span></span><b><span data-l="en">Parameter review</span><span data-l="pt">Revisão de parâmetros</span></b></a>
+            <a href="#step-05"><span class="n">05 <span class="status done"><span data-l="en">Done</span><span data-l="pt">Pronto</span></span></span><b><span data-l="en">Rhino 9 plug-in</span><span data-l="pt">Plug-in Rhino 9</span></b></a>
+            <a href="#step-06"><span class="n">06 <span class="status done"><span data-l="en">Done</span><span data-l="pt">Pronto</span></span></span><b><span data-l="en">Web viewer</span><span data-l="pt">Visualizador web</span></b></a>
+            <a href="#next" class="next"><span class="n">07 <span class="status next"><span data-l="en">Next</span><span data-l="pt">Em breve</span></span></span><b><span data-l="en">Link to Revit</span><span data-l="pt">Ligação com o Revit</span></b></a>
+            <a href="#next" class="next"><span class="n">08 <span class="status next"><span data-l="en">Next</span><span data-l="pt">Em breve</span></span></span><b><span data-l="en">Documentation</span><span data-l="pt">Documentação</span></b></a>
           </div>
         </div>
       </section>
 
-      <!-- ===================== ASSIGNMENT ===================== -->
+      <!-- ===================== ASSIGNMENT + METHOD ===================== -->
       <section class="block" id="assignment">
         <div class="wrap">
           <div class="head">
             <div>
-              <div class="eyebrow">The assignment</div>
-              <h2>Arrange the steel frame for a panel, and draw it for fabrication</h2>
+              <div class="eyebrow"><span data-l="en">The assignment</span><span data-l="pt">O desafio</span></div>
+              <h2><span data-l="en">Arrange the steel frame for a panel, using Grasshopper</span><span data-l="pt">Distribuir o quadro de aço de um painel, usando Grasshopper</span></h2>
             </div>
-            <p>A GRC cladding fabricator set this as a design test. The brief was one line: take the 3D face of a panel and, using Grasshopper, arrange its steel frame and produce the fabrication drawing. A sample shop drawing of a similar panel came with it.</p>
+            <p>
+              <span data-l="en">A design test from a GRC cladding fabricator: one 3D face of a curved panel and a sample shop drawing. Each step below was a written brief run in Rhino, with a stop for review before anything was built.</span>
+              <span data-l="pt">Um teste de projeto de um fabricante de fachadas em GRC: a face 3D de um painel curvo e uma prancha de fabricação de exemplo. Cada etapa abaixo foi um roteiro escrito e executado no Rhino, com uma parada para revisão antes de construir.</span>
+            </p>
           </div>
-
-          <div class="grid c2">
-            <div class="card">
-              <div class="k">Given</div>
-              <h4 style="margin-top:10px">One surface and a sample shop drawing</h4>
-              <ul class="muted" style="margin-top:10px;padding-left:18px;font-size:14.5px">
-                <li>A Rhino file with a single 3D face: the visible finish surface of the GRC panel (E1). It curves in both directions.</li>
-                <li>A sample shop drawing: finish surface plan (E1), steel stud frame layout (E2), horizontal and vertical sections, edge details D1 (bottom edge, cast-in sockets) and D2 (hanging connector).</li>
-                <li>Two steel sheets for another panel: the frame layout, the steel template (outer and inner steel) and a numbered point table.</li>
-              </ul>
-            </div>
-            <div class="card">
-              <div class="k">Asked for</div>
-              <h4 style="margin-top:10px">A frame you could build, from a definition you could rerun</h4>
-              <ul class="muted" style="margin-top:10px;padding-left:18px;font-size:14.5px">
-                <li>Steel stud frame mapped onto the curved panel, made of straight tubes only.</li>
-                <li>Flex anchors, connectors and fixings, placed by the same rules as the sample drawing.</li>
-                <li>Fabrication data: member lengths, end cuts, weights, node coordinates.</li>
-                <li>A fabrication drawing. In this project, drawings move to Revit (steps 05 and 06).</li>
-              </ul>
-            </div>
-          </div>
-
-          <h3 class="sub">What made it harder than it looks</h3>
-          <div class="grid c3">
-            <div class="card"><h4>Curved surface, straight steel</h4><p>Tubes cannot follow a doubly curved face. Each member must be straight, and its gap to the GRC changes along its length.</p></div>
-            <div class="card"><h4>Numbers hidden in a drawing</h4><p>Most dimensions had to be read from sections and details: 15 skin, 170 gap, 100 deep studs, 630 socket spacing. Some had to be estimated by scale.</p></div>
-            <div class="card"><h4>Rules from more than one source</h4><p>Anchor spacing, edge distance, toe direction and pad cover come from GRC industry guidance (GRCA, PCI), not from the drawing.</p></div>
-          </div>
-        </div>
-      </section>
-
-      <!-- ===================== METHOD ===================== -->
-      <section class="block" id="method">
-        <div class="wrap">
-          <div class="head">
-            <div>
-              <div class="eyebrow">How the definition was built</div>
-              <h2>One brief per step, with a stop before anything is built</h2>
-            </div>
-            <p>The work was split into steps that each add one layer of the panel. Every step is a written brief, run in Rhino 8 through Claude and the Rhino MCP. The brief says exactly what to read, what rules to follow, when to stop and show the result, and what to check at the end.</p>
-          </div>
-
-          <h3 class="sub">Every brief has the same parts</h3>
-          <div class="anatomy">
-            <div><h4>Inputs</h4><p>Files from the previous step, reference sheets, units (mm). Never overwrite earlier files.</p></div>
-            <div><h4>Read before building</h4><p>Open the previous definition and read its real output names instead of guessing them.</p></div>
-            <div><h4>Terms</h4><p>Front and back faces, the BACK normal, depth h, width b, stud axis. Defined once and reused.</p></div>
-            <div><h4>Rules with sources</h4><p>Every number traced to a section, a detail or a standard. Estimated values are marked as such.</p></div>
-            <div><h4>Stop and confirm</h4><p>Show the layout first, wait for an OK. Build the solids, check, and wait again before saving.</p></div>
-            <div><h4>Grasshopper</h4><p>Python 3 components in named groups. Every value is a named slider. Earlier groups stay untouched.</p></div>
-            <div><h4>Outputs</h4><p>Bake layers, the .gh and .3dm files, CSV lists and captured views with fixed names.</p></div>
-            <div><h4>Checks</h4><p>Solid validity, spacings, clearances, clash tests, counts and weights, plus every assumption made.</p></div>
-          </div>
-
-          <h3 class="sub">Principles that held across all steps</h3>
-          <ul class="rules">
-            <li><span>Build on the real thing</span><span>Each step extends the previous definition and is tested on two different panels (P1 and P2), so the rules are not tied to one shape.</span></li>
-            <li><span>Robust geometry</span><span>On a doubly curved face, edges are built from planar profiles about every 100 mm and lofted. Sweep1 was avoided because its rail frame twists.</span></li>
-            <li><span>IDs from the start</span><span>Members, anchors, connectors, boards and nodes get stable IDs (V1, HB3, FAV7-2, HC-V1-B, GB1-03, PT0…) that the CSV lists and later Revit elements share.</span></li>
-            <li><span>Data, not just geometry</span><span>Every step writes CSV lists: members, anchors, nodes, connectors, gypsum cut list, closing pieces.</span></li>
-            <li><span>Review the parameters</span><span>Once the geometry was right, step 04 went back over every input to decide which ones are real design variables.</span></li>
+          <ul class="points">
+            <li><b><span data-l="en">Curved face, straight steel</span><span data-l="pt">Face curva, aço reto</span></b><span data-l="en">Every member is a straight tube, so the gap to the skin varies along it.</span><span data-l="pt">Toda barra é um tubo reto, então a folga até a pele varia ao longo dela.</span></li>
+            <li><b><span data-l="en">Rules with sources</span><span data-l="pt">Regras com origem</span></b><span data-l="en">Numbers read from the drawing sections and details, or from GRCA and PCI guidance.</span><span data-l="pt">Números lidos nos cortes e detalhes da prancha, ou nas recomendações GRCA e PCI.</span></li>
+            <li><b><span data-l="en">Tested on two panels</span><span data-l="pt">Testado em dois painéis</span></b><span data-l="en">P1 and P2 run through every step, with IDs and CSV lists at each one.</span><span data-l="pt">P1 e P2 passam por todas as etapas, com IDs e listas CSV em cada uma.</span></li>
           </ul>
         </div>
       </section>
@@ -481,45 +310,24 @@
         <div class="wrap">
           <div class="head">
             <div>
-              <div class="step-label"><span class="step-num">01</span><span class="status done">Done</span></div>
-              <h2>GRC panel from the finish surface</h2>
+              <div class="step-label"><span class="step-num">01</span></div>
+              <h2><span data-l="en">GRC panel</span><span data-l="pt">Painel GRC</span></h2>
             </div>
-            <p>Build only the GRC solid: the 15 mm skin, the returns on each edge and the thickened bottom edge with its cast-in sockets. No steel yet. First the surface is inspected and its edges named TOP, BOTTOM, LEFT and RIGHT, and the BACK direction is shown, then work waits for an OK.</p>
+            <p>
+              <span data-l="en">A 15 mm skin, returns on every edge and a thickened bottom edge with Ø8 cast-in sockets, joined into one closed solid.</span>
+              <span data-l="pt">Pele de 15 mm, retornos em todas as bordas e borda inferior engrossada com insertos Ø8, unidos em um único sólido fechado.</span>
+            </p>
           </div>
-
-          <div class="tablewrap">
-            <table class="compare">
-              <thead><tr><th>Part</th><th class="num">Depth (back)</th><th class="num">Width (inward)</th><th>Source</th></tr></thead>
-              <tbody>
-                <tr><td>Face skin</td><td class="num">15</td><td class="num">whole face</td><td class="muted">Sections H and V</td></tr>
-                <tr><td>Left and right returns</td><td class="num">150</td><td class="num">20*</td><td class="muted">Section H</td></tr>
-                <tr><td>Top return (solid nib)</td><td class="num">140</td><td class="num">50*</td><td class="muted">Section V</td></tr>
-                <tr><td>Bottom thickened edge</td><td class="num">150</td><td class="num">90 + 10 haunch</td><td class="muted">Edge detail D1</td></tr>
-                <tr><td>Ø8 cast-in sockets</td><td class="num">70 long</td><td class="num">45 from edge</td><td class="muted">D1, at most 630 apart, first and last 100 from the ends</td></tr>
-              </tbody>
-            </table>
-          </div>
-          <p class="inv-note">All dimensions in mm. * Estimated by scale from the drawing and left as parameters.</p>
-
           <div class="figs two">
             <figure class="shot">
-              <div class="img"><img src="img/s01-panel.webp" alt="Back view of the GRC panel solid with its returns" loading="lazy" width="1600" height="880" /></div>
-              <figcaption><b>Panel solid from the back.</b> Skin, returns and bottom edge joined into one closed, valid solid.</figcaption>
+              <div class="img"><img src="img/s01-panel.webp" alt="GRC panel solid seen from the back" loading="lazy" width="1600" height="880" /></div>
+              <figcaption><span data-l="en">Panel solid, from the back.</span><span data-l="pt">Sólido do painel, visto por trás.</span></figcaption>
             </figure>
             <figure class="shot">
-              <div class="img"><img src="img/s01-sockets.webp" alt="Close-up of the bottom edge with red cast-in sockets" loading="lazy" width="1600" height="900" /></div>
-              <figcaption><b>Bottom edge (D1).</b> Thickened edge, haunch into the skin, and the Ø8 cast-in sockets in red.</figcaption>
+              <div class="img light"><img src="img/s01-sections.webp" alt="Check sections through the panel with measured dimensions" loading="lazy" width="1800" height="986" /></div>
+              <figcaption><span data-l="en">Check sections H and V, measured on the solid.</span><span data-l="pt">Cortes H e V de conferência, medidos no sólido.</span></figcaption>
             </figure>
           </div>
-          <div class="figs">
-            <figure class="shot">
-              <div class="img"><img src="img/s01-sections.webp" alt="Horizontal and vertical sections through the panel with measured dimensions" loading="lazy" width="1800" height="986" /></div>
-              <figcaption><b>Check sections.</b> Horizontal and vertical sections through the centre, with the edge profiles measured on the solid to compare with sections H and V of the sample drawing.</figcaption>
-            </figure>
-          </div>
-
-          <h3 class="sub">Files</h3>
-          <div class="files"><span class="file">STEP01_GRC_Panel.gh</span><span class="file">STEP01_GRC_Panel.3dm</span><span class="file">STEP01_GRC_Panel_persp.png</span><span class="file">STEP01_GRC_Panel_section.png</span></div>
         </div>
       </section>
 
@@ -528,61 +336,23 @@
         <div class="wrap">
           <div class="head">
             <div>
-              <div class="step-label"><span class="step-num">02</span><span class="status done">Done</span></div>
-              <h2>Steel stud frame and Ø12 flex anchors</h2>
+              <div class="step-label"><span class="step-num">02</span></div>
+              <h2><span data-l="en">Steel stud frame and flex anchors</span><span data-l="pt">Quadro de montantes e ancoragens flexíveis</span></h2>
             </div>
-            <p>The curved panel is mapped onto a frame of straight steel tubes and tied to the skin with flex anchors. The layout is shown first (centrelines, bays, profiles by role, gaps, anchor points and toe arrows). Only after an OK are the tubes, rods and bonding pads built.</p>
+            <p>
+              <span data-l="en">Straight RHS studs at an even number of bays up to 600 mm, 170 mm behind the skin. Chords are split into straight pieces between the studs.</span>
+              <span data-l="pt">Montantes retos em tubo retangular, em número par de vãos de até 600 mm, a 170 mm da pele. As travessas são divididas em trechos retos entre os montantes.</span>
+            </p>
           </div>
-
-          <h3 class="sub">Frame rules</h3>
-          <ul class="rules">
-            <li><span>Straight members only</span><span>Every member is a straight RHS or SHS, checked on each centreline. Vertical studs are one piece from chord to chord.</span></li>
-            <li><span>Chords as polygons</span><span>Top and bottom chords are split between the verticals and butt-welded, so a curved edge becomes a polygon of straight pieces.</span></li>
-            <li><span>Bays</span><span>Equal bays of at most 600 mm along the bottom chord, always an even number, so a vertical lands on the panel centre.</span></li>
-            <li><span>Position</span><span>170 mm clear from the back of the skin to the front of the studs (minimum, per stud), 160 mm in from the panel edge. All members flush on the front face.</span></li>
-            <li><span>Profiles by role</span><span>Edge and centre verticals RHS 100×50×4 (outer steel). Inner verticals RHS 60×40×3 (inner steel). Each role picks from an editable steel catalog, and single members can be overridden by ID.</span></li>
+          <ul class="points">
+            <li><b><span data-l="en">Profiles by role</span><span data-l="pt">Perfil por função</span></b>RHS 100×50×4 <span data-l="en">edge and centre</span><span data-l="pt">bordas e centro</span>, RHS 60×40×3 <span data-l="en">inner</span><span data-l="pt">internos</span>.</li>
+            <li><b><span data-l="en">Ø12 flex anchors</span><span data-l="pt">Ancoragens Ø12</span></b><span data-l="en">≤ 600 mm apart, toes pointing to the panel centre.</span><span data-l="pt">A cada 600 mm no máximo, com o pé voltado para o centro do painel.</span></li>
+            <li><b><span data-l="en">Bonding pads</span><span data-l="pt">Almofadas de fixação</span></b><span data-l="en">At least 13 mm of GRC over every anchor foot.</span><span data-l="pt">No mínimo 13 mm de GRC sobre cada pé de ancoragem.</span></li>
           </ul>
-
-          <h3 class="sub">Flex anchor rules</h3>
-          <ul class="rules">
-            <li><span>Spacing and edges</span><span>On every vertical, at most 600 mm apart. First and last anchors 200 mm from the inner face of the edge, inside the 150–300 mm rule.</span></li>
-            <li><span>Shape</span><span>Ø12 rod: leg along the BACK normal, welded 50 mm to the stud side facing the panel centre, heel bend r = 24, foot 100 long and 5 mm above the skin.</span></li>
-            <li><span>Toe direction</span><span>Toward the panel centre, so drying shrinkage pulls the leg away from the stud instead of pressing it against the stud.</span></li>
-            <li><span>Bonding pad</span><span>A GRC mound over each foot with at least 13 mm cover (5 + 12 + 13 = 30 high), kept fully on the skin, clear of the returns, the D1 edge and the sockets.</span></li>
-          </ul>
-
-          <div class="figs">
-            <figure class="shot">
-              <div class="img"><img src="img/s02-layout.webp" alt="Back elevations of panels P1 and P2 with member IDs, colour-coded by profile" loading="lazy" width="1400" height="1604" /></div>
-              <figcaption><b>Layout check, panels P1 and P2.</b> Back elevations with member IDs. Magenta: RHS 100×50×4 (edge and centre studs). Teal: RHS 60×40×3. Green arrows show the anchor toe direction.</figcaption>
-            </figure>
-            <figure class="shot">
-              <div class="img"><img src="img/s02-frame.webp" alt="Perspective from the back of both panels with frame, anchors and pads" loading="lazy" width="2000" height="621" /></div>
-              <figcaption><b>Solids.</b> Frames, flex anchors and bonding pads on both test panels.</figcaption>
-            </figure>
-          </div>
-
-          <h3 class="sub">Results on the two test panels</h3>
-          <div class="tablewrap">
-            <table class="compare">
-              <thead><tr><th></th><th class="num">P1</th><th class="num">P2</th></tr></thead>
-              <tbody>
-                <tr><td>Bottom edge length</td><td class="num">6466 mm</td><td class="num">8576 mm</td></tr>
-                <tr><td>Members (verticals + chord pieces)</td><td class="num">37 (13 + 24)</td><td class="num">43 (15 + 28)</td></tr>
-                <tr><td>Frame steel weight</td><td class="num">230.3 kg</td><td class="num">224.7 kg</td></tr>
-                <tr><td>Gap skin to stud, min – max</td><td class="num">170 – 188 mm</td><td class="num">170 – 286 mm</td></tr>
-                <tr><td>Flex anchors</td><td class="num">67</td><td class="num">70</td></tr>
-                <tr><td>Anchor leg length, min – max</td><td class="num">224 – 273 mm</td><td class="num">237 – 371 mm</td></tr>
-                <tr><td>Largest anchor spacing</td><td class="num">592 mm</td><td class="num">588 mm</td></tr>
-                <tr><td>Foot effective length / pad cover (min)</td><td class="num">76 / 13 mm</td><td class="num">76 / 13 mm</td></tr>
-                <tr><td>Frame nodes (PT0…)</td><td class="num">39</td><td class="num">45</td></tr>
-              </tbody>
-            </table>
-          </div>
-          <p class="inv-note">The second panel curves more along its height, so the gap between straight studs and the skin, and with it the anchor legs, varies much more.</p>
-
-          <h3 class="sub">Files</h3>
-          <div class="files"><span class="file">STEP02_Steel_Frame.gh</span><span class="file">STEP02_Steel_Frame.3dm</span><span class="file">steel_catalog.csv</span><span class="file">STEP02_member_list.csv</span><span class="file">STEP02_anchor_list.csv</span><span class="file">STEP02_node_list.csv</span></div>
+          <figure class="shot">
+            <div class="img"><img src="img/s02-layout.webp" alt="Back elevation of panel P1 with member IDs, colour-coded by profile" loading="lazy" width="1600" height="873" /></div>
+            <figcaption><span data-l="en">P1 from the back: member IDs, magenta RHS 100×50×4, teal RHS 60×40×3.</span><span data-l="pt">P1 por trás: IDs das barras, magenta RHS 100×50×4, verde-água RHS 60×40×3.</span></figcaption>
+          </figure>
         </div>
       </section>
 
@@ -591,66 +361,29 @@
         <div class="wrap">
           <div class="head">
             <div>
-              <div class="step-label"><span class="step-num">03</span><span class="status done">Done</span></div>
-              <h2>Hanging connectors, gypsum lining and GRC closing piece</h2>
+              <div class="step-label"><span class="step-num">03</span></div>
+              <h2><span data-l="en">Connectors, lining and closing piece</span><span data-l="pt">Conectores, revestimento e peça de fechamento</span></h2>
             </div>
-            <p>The parts that carry the panel's weight and close it off. Flex anchors only take wind load, so the panel hangs from rigid connectors on its main studs. Gypsum lines the back of the frame, and a GRC strip closes the cavity under the panel.</p>
+            <p>
+              <span data-l="en">The panel hangs from rigid connectors; anchors only take wind. Gypsum lines the back, and a GRC strip closes the bottom.</span>
+              <span data-l="pt">O painel fica pendurado em conectores rígidos; as ancoragens só recebem vento. Gesso reveste o fundo e uma tira de GRC fecha a base.</span>
+            </p>
           </div>
-
-          <div class="grid c3">
-            <div class="card">
-              <div class="k">A · Edge detail D2</div>
-              <h4 style="margin-top:10px">Hanging connectors</h4>
-              <p>One at the bottom and one at the top of each edge and centre stud: 6 per panel. Each has 2 strut channels 50×30×2.5, 4 triangular stiffeners, 2 M16 hammer-head T-bolts and a 10 mm T bracket with a hook slot.</p>
-            </div>
-            <div class="card">
-              <div class="k">B · Lining</div>
-              <h4 style="margin-top:10px">Gypsum board</h4>
-              <p>12.5 mm boards on the back of the frame, one per bay, jointed on stud centrelines. Rounded cut-outs (180×130, r 30) clear every bracket. 40 mm packers on the shallower studs.</p>
-            </div>
-            <div class="card">
-              <div class="k">C · Bottom edge</div>
-              <h4 style="margin-top:10px">GRC closing piece</h4>
-              <p>An L-shaped GRC strip (15 mm) fixed to the back of the D1 edge with M8×40 screws into the cast-in sockets. Two pieces, split at the centre stud with a 5 mm joint.</p>
-            </div>
-          </div>
-
-          <div class="figs">
+          <ul class="points">
+            <li><b><span data-l="en">6 hanging connectors per panel</span><span data-l="pt">6 conectores por painel</span></b><span data-l="en">Strut channels, stiffeners, M16 T-bolts and a 10 mm T bracket.</span><span data-l="pt">Perfis C, enrijecedores, parafusos T M16 e suporte em T de 10 mm.</span></li>
+            <li><b><span data-l="en">Gypsum lining</span><span data-l="pt">Revestimento em gesso</span></b><span data-l="en">One 12.5 mm board per bay, cut out around the brackets.</span><span data-l="pt">Uma placa de 12,5 mm por vão, recortada nos suportes.</span></li>
+            <li><b><span data-l="en">Closing piece</span><span data-l="pt">Peça de fechamento</span></b><span data-l="en">L-shaped GRC strip, M8 screws into the cast-in sockets.</span><span data-l="pt">Tira de GRC em L, parafusos M8 nos insertos.</span></li>
+          </ul>
+          <div class="figs r21">
             <figure class="shot">
-              <div class="img"><img src="img/s03-connectors.webp" alt="Back of both panels with gypsum hidden, showing connectors, anchors and closing piece" loading="lazy" width="2000" height="625" /></div>
-              <figcaption><b>Gypsum hidden.</b> Hanging connectors at the ends of the edge and centre studs, flex anchors, and the closing piece along the bottom edge.</figcaption>
+              <div class="img light"><img src="img/s03-connectors.webp" alt="Back of both panels with gypsum hidden" loading="lazy" width="2000" height="625" /></div>
+              <figcaption><span data-l="en">Both panels, gypsum hidden.</span><span data-l="pt">Os dois painéis, sem o gesso.</span></figcaption>
             </figure>
             <figure class="shot">
-              <div class="img"><img src="img/s03-lining.webp" alt="Back of both panels with the gypsum lining and bracket cut-outs" loading="lazy" width="2000" height="625" /></div>
-              <figcaption><b>With the lining.</b> One board per bay, jointed on the studs, with cut-outs around the brackets.</figcaption>
+              <div class="img light"><img src="img/s03-d2.webp" alt="Close-up of hanging connector HC-V1-B" loading="lazy" width="1300" height="894" /></div>
+              <figcaption><span data-l="en">Hanging connector HC-V1-B (detail D2).</span><span data-l="pt">Conector HC-V1-B (detalhe D2).</span></figcaption>
             </figure>
           </div>
-          <div class="figs two">
-            <figure class="shot">
-              <div class="img"><img src="img/s03-d2.webp" alt="Close-up of hanging connector HC-V1-B" loading="lazy" width="1300" height="894" /></div>
-              <figcaption><b>Connector HC-V1-B.</b> Strut channels on both sides of the RHS, stiffeners, T-bolts and the T bracket with its hook slot. Compare with edge detail D2.</figcaption>
-            </figure>
-            <div>
-              <div class="tablewrap">
-                <table>
-                  <thead><tr><th></th><th class="num">P1</th><th class="num">P2</th></tr></thead>
-                  <tbody>
-                    <tr><td>Hanging connectors</td><td class="num">6</td><td class="num">6</td></tr>
-                    <tr><td>Channels / stiffeners / T-bolts</td><td class="num">12 / 24 / 12</td><td class="num">12 / 24 / 12</td></tr>
-                    <tr><td>Gypsum boards</td><td class="num">12</td><td class="num">14</td></tr>
-                    <tr><td>Gypsum area</td><td class="num">14.9 m²</td><td class="num">15.2 m²</td></tr>
-                    <tr><td>Packers (40 mm)</td><td class="num">10</td><td class="num">12</td></tr>
-                    <tr><td>Closing pieces</td><td class="num">2 × 22.4 kg</td><td class="num">30.2 + 30.0 kg</td></tr>
-                    <tr><td>M8 screws (= sockets)</td><td class="num">11</td><td class="num">15</td></tr>
-                  </tbody>
-                </table>
-              </div>
-              <p class="inv-note">Connector steel and bolts for both panels: 37.6 kg. The brief asked for two gypsum layers; this was reduced to one during the review.</p>
-            </div>
-          </div>
-
-          <h3 class="sub">Files</h3>
-          <div class="files"><span class="file">STEP03_Connectors_Lining.gh</span><span class="file">STEP03_Connectors_Lining.3dm</span><span class="file">STEP03_connector_list.csv</span><span class="file">STEP03_gypsum_cutlist.csv</span><span class="file">STEP03_closing_pieces.csv</span></div>
         </div>
       </section>
 
@@ -659,103 +392,43 @@
         <div class="wrap">
           <div class="head">
             <div>
-              <div class="step-label"><span class="step-num">04</span><span class="status wip">In review</span></div>
-              <h2>Parameter review: keep only the real design variables</h2>
+              <div class="step-label"><span class="step-num">04</span></div>
+              <h2><span data-l="en">Parameter review</span><span data-l="pt">Revisão de parâmetros</span></h2>
             </div>
-            <p>Three steps of "make every number a slider" left the definition with over a hundred inputs. Step 04 is a clean-up, not a redesign: every input is listed and classified, and the geometry must not change.</p>
+            <p>
+              <span data-l="en">Every input was listed and classified, so only real design variables stay as sliders. The geometry must not change.</span>
+              <span data-l="pt">Cada entrada foi listada e classificada, para que só as variáveis de projeto continuem como sliders. A geometria não pode mudar.</span>
+            </p>
           </div>
-
-          <div class="grid c3">
-            <div class="card"><span class="badge KEEP">KEEP</span><h4 style="margin-top:12px">Stays a slider</h4><p>A design variable that changes per project or per panel: bay size, gap, edge inset, profiles by role, anchor spacing, on/off options.</p></div>
-            <div class="card"><span class="badge FIX">FIX</span><h4 style="margin-top:12px">Becomes a constant</h4><p>A standard product, catalog size or code minimum: bolt and screw sizes, strut channel, plate thickness, gypsum 12.5, pad cover 13.</p></div>
-            <div class="card"><span class="badge DERIVE">DERIVE</span><h4 style="margin-top:12px">Computed from others</h4><p>Already defined by other values: heel radius = 2 × rod Ø, pad height = clearance + rod Ø + cover, lip height = D1 height.</p></div>
+          <div class="counts">
+            <div class="count"><b>103</b><span><span data-l="en">inputs</span><span data-l="pt">entradas</span></span></div>
+            <div class="count"><b>27</b><span class="badge KEEP">KEEP</span></div>
+            <div class="count"><b>54</b><span class="badge FIX">FIX</span></div>
+            <div class="count"><b>22</b><span class="badge DERIVE">DERIVE</span></div>
           </div>
-
-          <h3 class="sub">Sample cards: one parameter, one close-up</h3>
-          <p class="muted prose" style="margin-bottom:20px">For each parameter, panel P1 is shown in close-up with the elements it controls highlighted in yellow, a label with the parameter name exactly as in the script, and a dimension when it is a length. Three samples were made first, to approve the format before doing the rest.</p>
-          <div class="grid c3">
+          <div class="pcards">
             <article class="pcard">
-              <div class="img"><img src="img/s04-max-bay.webp" alt="max_bay close-up: two highlighted studs with a 485 mm dimension" loading="lazy" width="1600" height="1000" /></div>
+              <div class="img"><img src="img/s04-max-bay.webp" alt="max_bay close-up" loading="lazy" width="1600" height="1000" /></div>
               <div class="body">
                 <div class="top"><span class="pname">max_bay</span><span class="badge KEEP">KEEP</span></div>
-                <dl>
-                  <div class="row"><dt>Value</dt><dd>600 mm (actual bay 485)</dd></div>
-                  <div class="row"><dt>Step</dt><dd>02 · frame layout</dd></div>
-                  <div class="row"><dt>Controls</dt><dd>Largest bay between verticals; sets the stud count</dd></div>
-                  <div class="row"><dt>Reason</dt><dd>Design variable, changes per project</dd></div>
-                </dl>
+                <p><span data-l="en">600 mm. Design variable: sets the stud count.</span><span data-l="pt">600 mm. Variável de projeto: define o número de montantes.</span></p>
               </div>
             </article>
             <article class="pcard">
-              <div class="img"><img src="img/s04-pad-h.webp" alt="pad_h close-up: highlighted bonding pad over an anchor foot, 30 mm high" loading="lazy" width="1600" height="1000" /></div>
+              <div class="img"><img src="img/s04-pad-h.webp" alt="pad_h close-up" loading="lazy" width="1600" height="1000" /></div>
               <div class="body">
                 <div class="top"><span class="pname">pad_h</span><span class="badge DERIVE">DERIVE</span></div>
-                <dl>
-                  <div class="row"><dt>Value</dt><dd>30 mm</dd></div>
-                  <div class="row"><dt>Step</dt><dd>02 · flex anchors</dd></div>
-                  <div class="row"><dt>Controls</dt><dd>Height of the bonding pad over each anchor foot</dd></div>
-                  <div class="row"><dt>Becomes</dt><dd><code>FOOT_CLEAR + ROD_D + PAD_COVER</code></dd></div>
-                </dl>
+                <p><code>FOOT_CLEAR + ROD_D + PAD_COVER</code> = 30 mm</p>
               </div>
             </article>
             <article class="pcard">
-              <div class="img"><img src="img/s04-scr-len.webp" alt="scr_len close-up: highlighted M8 screw through the closing piece, 40 mm" loading="lazy" width="1600" height="1000" /></div>
+              <div class="img"><img src="img/s04-scr-len.webp" alt="scr_len close-up" loading="lazy" width="1600" height="1000" /></div>
               <div class="body">
                 <div class="top"><span class="pname">scr_len</span><span class="badge FIX">FIX</span></div>
-                <dl>
-                  <div class="row"><dt>Value</dt><dd>40 mm</dd></div>
-                  <div class="row"><dt>Step</dt><dd>03 · closing piece</dd></div>
-                  <div class="row"><dt>Controls</dt><dd>Length of the screws into the cast-in sockets</dd></div>
-                  <div class="row"><dt>Becomes</dt><dd><code>SCR_LEN = 40.0</code> (M8×40, catalog)</dd></div>
-                </dl>
+                <p><code>SCR_LEN = 40.0</code> <span data-l="en">(M8×40, catalog)</span><span data-l="pt">(M8×40, catálogo)</span></p>
               </div>
             </article>
           </div>
-
-          <h3 class="sub">Full inventory</h3>
-          <div class="counts" id="counts"></div>
-          <div class="filters" role="group" aria-label="Filter the inventory">
-            <span class="lbl">Step</span>
-            <button type="button" data-f="step" data-v="" aria-pressed="true">All</button>
-            <button type="button" data-f="step" data-v="1" aria-pressed="false">01</button>
-            <button type="button" data-f="step" data-v="2" aria-pressed="false">02</button>
-            <button type="button" data-f="step" data-v="3" aria-pressed="false">03</button>
-            <span class="sep" aria-hidden="true"></span>
-            <span class="lbl">Proposal</span>
-            <button type="button" data-f="proposal" data-v="" aria-pressed="true">All</button>
-            <button type="button" data-f="proposal" data-v="KEEP" aria-pressed="false">Keep</button>
-            <button type="button" data-f="proposal" data-v="FIX" aria-pressed="false">Fix</button>
-            <button type="button" data-f="proposal" data-v="DERIVE" aria-pressed="false">Derive</button>
-            <input type="search" id="q" placeholder="Search name or description" aria-label="Search the inventory" />
-          </div>
-          <div class="tablewrap inv-scroll">
-            <table id="inv">
-              <thead>
-                <tr>
-                  <th data-k="name">Name</th>
-                  <th data-k="step">Step</th>
-                  <th data-k="kind">Kind</th>
-                  <th data-k="value" class="num">Value</th>
-                  <th data-k="controls">Controls</th>
-                  <th data-k="proposal">Proposal</th>
-                  <th data-k="reason">Reason</th>
-                  <th data-k="becomes">Becomes</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-          </div>
-          <p class="inv-note" id="inv-shown"></p>
-
-          <h3 class="sub">What happens after approval</h3>
-          <ul class="rules">
-            <li><span>Cards for every parameter</span><span>The same close-up card for each remaining input, then a final approval of the full list.</span></li>
-            <li><span>Apply</span><span>FIX: the slider becomes an UPPER_CASE constant at the top of its script, with its source in a comment. DERIVE: computed in the script, with the formula. KEEP: clear name, range and unit, gathered in one "Design inputs" group per step.</span></li>
-            <li><span>Regression check</span><span>Step 03 and step 04 are run on the same panels and compared: object counts and volumes per layer, and every CSV row by row, within 0.01 mm³ / 0.1 mm. Nothing is saved until any difference is explained.</span></li>
-          </ul>
-
-          <h3 class="sub">Files</h3>
-          <div class="files"><span class="file">STEP04_param_inventory.csv</span><span class="file">STEP04_param_review.html</span><span class="file">STEP04_Optimized.gh (after approval)</span></div>
         </div>
       </section>
 
@@ -764,19 +437,51 @@
         <div class="wrap">
           <div class="head">
             <div>
-              <div class="step-label"><span class="step-num">05</span><span class="status planned">In development</span></div>
-              <h2>Link to Revit with Rhino.Inside.Revit</h2>
+              <div class="step-label"><span class="step-num">05</span></div>
+              <h2><span data-l="en">GRC PanelStudio, a Rhino 9 plug-in</span><span data-l="pt">GRC PanelStudio, plug-in para Rhino 9</span></h2>
             </div>
-            <p>The Grasshopper definition stays the source of the geometry. Rhino.Inside.Revit components will carry the panel, the frame and its parts into a Revit model, with their IDs and data.</p>
+            <p>
+              <span data-l="en">The reviewed definition ported to C#: no Grasshopper needed. Pick a finish face, move a few sliders, bake to layers or export the CSV lists.</span>
+              <span data-l="pt">A definição revisada portada para C#, sem precisar do Grasshopper. Escolha a face de acabamento, ajuste alguns sliders, gere as camadas ou exporte as listas CSV.</span>
+            </p>
           </div>
-          <div class="planned-box">
-            <div class="eyebrow">Scope being defined</div>
-            <ul>
-              <li>Which parts become Revit elements, and in which categories and families.</li>
-              <li>Parameters carried across from the CSV lists: IDs, profiles, lengths, weights.</li>
-              <li>How an update in Grasshopper reaches the Revit model.</li>
-            </ul>
-            <p class="note">This section will be filled in as the step is developed.</p>
+          <div class="figs ui">
+            <div class="col">
+            <figure class="shot">
+              <div class="img"><img src="img/s05-plugin.webp" alt="Panels built by the plug-in, seen from the back" loading="lazy" width="1600" height="852" /></div>
+              <figcaption><span data-l="en">Both sample panels built by the plug-in.</span><span data-l="pt">Os dois painéis de exemplo gerados pelo plug-in.</span></figcaption>
+            </figure>
+            <div class="figs two">
+            <figure class="shot">
+              <div class="img"><img src="img/s05-curvature.webp" alt="GRC curvature analysis with bending radius labels" loading="lazy" width="1600" height="852" /></div>
+              <figcaption><b><span data-l="en">GRC curvature.</span><span data-l="pt">Curvatura do GRC.</span></b> <span data-l="en">Minimum bending radius of the finish face.</span><span data-l="pt">Raio mínimo de curvatura da face.</span></figcaption>
+            </figure>
+            <figure class="shot">
+              <div class="img"><img src="img/s05-gypsum-flex.webp" alt="Gypsum board bending analysis per board" loading="lazy" width="1600" height="852" /></div>
+              <figcaption><b><span data-l="en">Gypsum flex.</span><span data-l="pt">Flexão do gesso.</span></b> <span data-l="en">Each board's bend against its minimum radius.</span><span data-l="pt">Curvatura de cada placa contra o raio mínimo.</span></figcaption>
+            </figure>
+            </div>
+            </div>
+            <figure class="shot">
+              <div class="img"><img src="img/s05-ui.webp" alt="Plug-in side panel with build stages and sliders" loading="lazy" width="514" height="1540" /></div>
+              <figcaption><span data-l="en">Side panel: only the KEEP inputs.</span><span data-l="pt">Painel lateral: só as entradas KEEP.</span></figcaption>
+            </figure>
+          </div>
+          <div class="stats">
+            <div class="stat"><b>391</b><span><span data-l="en">CSV rows match the Grasshopper run (±0.1 mm)</span><span data-l="pt">linhas CSV iguais às do Grasshopper (±0,1 mm)</span></span></div>
+            <div class="stat"><b>~6 s</b><span><span data-l="en">live rebuild after a frame change</span><span data-l="pt">para refazer após mudar o quadro</span></span></div>
+            <div class="stat"><b>2</b><span><span data-l="en">analyses: GRC curvature, gypsum flex</span><span data-l="pt">análises: curvatura do GRC, flexão do gesso</span></span></div>
+            <div class="stat"><b>MIT</b><span><span data-l="en">open source, C# + Eto</span><span data-l="pt">código aberto, C# + Eto</span></span></div>
+          </div>
+          <div class="actions">
+            <a class="btn" href="https://github.com/almeida-andre/GRC-PanelStudio/releases/latest" target="_blank" rel="noopener" data-umami-event="grc-plugin-download">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>
+              <span data-l="en">Download v0.1.0</span><span data-l="pt">Baixar v0.1.0</span>
+            </a>
+            <a class="btn outline" href="https://github.com/almeida-andre/GRC-PanelStudio" target="_blank" rel="noopener" data-umami-event="grc-plugin-repo">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M8 6l-6 6 6 6M16 6l6 6-6 6"/></svg>
+              <span data-l="en">Source on GitHub</span><span data-l="pt">Código no GitHub</span>
+            </a>
           </div>
         </div>
       </section>
@@ -786,19 +491,53 @@
         <div class="wrap">
           <div class="head">
             <div>
-              <div class="step-label"><span class="step-num">06</span><span class="status planned">In development</span></div>
-              <h2>Documentation in Revit</h2>
+              <div class="step-label"><span class="step-num">06</span></div>
+              <h2><span data-l="en">Web viewer</span><span data-l="pt">Visualizador web</span></h2>
             </div>
-            <p>The fabrication drawing asked for in the brief, produced in Revit from the linked model.</p>
+            <p>
+              <span data-l="en">Share the model with anyone, no Rhino needed. The browser opens the .3dm with its layers, colours and data, from a plain static site.</span>
+              <span data-l="pt">Compartilhe o modelo com qualquer pessoa, sem precisar do Rhino. O navegador abre o .3dm com camadas, cores e dados, a partir de um site estático simples.</span>
+            </p>
           </div>
-          <div class="planned-box">
-            <div class="eyebrow">Planned content</div>
-            <ul>
-              <li>Sheets and views: frame layout, sections H and V, edge details.</li>
-              <li>Annotations: member tags, dimensions and the point table.</li>
-              <li>3D views, and assembly views for the panel and its parts.</li>
-            </ul>
-            <p class="note">This section will be filled in as the step is developed.</p>
+          <ul class="points">
+            <li><b><span data-l="en">Exploded view</span><span data-l="pt">Vista explodida</span></b><span data-l="en">By layer or by element, each panel about its own centre.</span><span data-l="pt">Por camada ou por elemento, cada painel em torno do próprio centro.</span></li>
+            <li><b><span data-l="en">Inspect</span><span data-l="pt">Inspecionar</span></b><span data-l="en">Click an element for its ID and data; hide or isolate layers.</span><span data-l="pt">Clique em um elemento para ver ID e dados; oculte ou isole camadas.</span></li>
+            <li><b><span data-l="en">Share</span><span data-l="pt">Compartilhar</span></b><span data-l="en">A link per model; views, display modes, m or ft-in.</span><span data-l="pt">Um link por modelo; vistas, modos de exibição, m ou pés.</span></li>
+          </ul>
+          <div class="figs r32">
+            <figure class="shot">
+              <div class="img light"><img src="img/s06-viewer.webp" alt="Web viewer showing both panels exploded by layer" loading="lazy" width="1600" height="1000" /></div>
+              <figcaption><span data-l="en">Step 03 model, exploded by layer, in the browser.</span><span data-l="pt">Modelo da etapa 03, explodido por camada, no navegador.</span></figcaption>
+            </figure>
+            <figure class="shot">
+              <div class="img light"><img src="img/s06-labels.webp" alt="Exploded panel with layer name labels" loading="lazy" width="740" height="680" /></div>
+              <figcaption><span data-l="en">Layer labels.</span><span data-l="pt">Nomes das camadas.</span></figcaption>
+            </figure>
+          </div>
+          <p class="muted" style="margin-top:16px;font-size:14px">React · Three.js · rhino3dm</p>
+        </div>
+      </section>
+
+      <!-- ===================== STEPS 07–08 ===================== -->
+      <section class="block" id="next">
+        <div class="wrap">
+          <div class="head">
+            <div>
+              <div class="eyebrow"><span data-l="en">Coming next</span><span data-l="pt">Próximas etapas</span></div>
+              <h2><span data-l="en">Into Revit</span><span data-l="pt">Para o Revit</span></h2>
+            </div>
+          </div>
+          <div class="next-grid">
+            <div class="next-box">
+              <div class="step-label"><span class="step-num">07</span><span class="status next"><span data-l="en">In development</span><span data-l="pt">Em desenvolvimento</span></span></div>
+              <h3><span data-l="en">Link to Revit</span><span data-l="pt">Ligação com o Revit</span></h3>
+              <p><span data-l="en">Rhino.Inside.Revit components bring the panel and its parts into Revit, with their IDs and data.</span><span data-l="pt">Componentes do Rhino.Inside.Revit levam o painel e suas peças para o Revit, com IDs e dados.</span></p>
+            </div>
+            <div class="next-box">
+              <div class="step-label"><span class="step-num">08</span><span class="status next"><span data-l="en">In development</span><span data-l="pt">Em desenvolvimento</span></span></div>
+              <h3><span data-l="en">Documentation</span><span data-l="pt">Documentação</span></h3>
+              <p><span data-l="en">Sheets, views, annotations, 3D views and assembly views in Revit.</span><span data-l="pt">Pranchas, vistas, anotações, vistas 3D e vistas de montagem no Revit.</span></p>
+            </div>
           </div>
         </div>
       </section>
@@ -811,18 +550,39 @@
       </div>
     </footer>
 
-    <dialog class="viewer" id="viewer" aria-label="Enlarged image">
-      <button type="button" class="close" data-close aria-label="Close">
+    <dialog class="viewer" id="viewer">
+      <button type="button" class="close" data-close>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
       </button>
       <img alt="" />
       <p class="cap"></p>
     </dialog>
 
-    <!-- Inventário de parâmetros (STEP04_param_inventory.csv) -->
-    <script type="application/json" id="inventory">[{"name":"skin_t","step":"1","script":"GRC_PANEL, S2_LAYOUT","kind":"slider","value":"15","unit":"mm","controls":"GRC face skin thickness","proposal":"KEEP","reason":"Design variable: 12-15 mm by project/panel","becomes":""},{"name":"lr_depth","step":"1","script":"GRC_PANEL","kind":"slider","value":"150","unit":"mm","controls":"Left/right return depth (back from face)","proposal":"KEEP","reason":"Changes with the panel joint detail","becomes":""},{"name":"lr_width","step":"1","script":"GRC_PANEL, S2_ANCHORS","kind":"slider","value":"20","unit":"mm","controls":"Left/right return thickness (in panel plane)","proposal":"KEEP","reason":"Panel-type dependent (was estimated)","becomes":""},{"name":"top_depth","step":"1","script":"GRC_PANEL","kind":"slider","value":"140","unit":"mm","controls":"Top return depth","proposal":"KEEP","reason":"Changes with the panel joint detail","becomes":""},{"name":"top_width","step":"1","script":"GRC_PANEL, S2_ANCHORS","kind":"slider","value":"50","unit":"mm","controls":"Top return nib thickness","proposal":"KEEP","reason":"Panel-type dependent (was estimated)","becomes":""},{"name":"bot_depth","step":"1","script":"GRC_PANEL, S3_CLOSING","kind":"slider","value":"150","unit":"mm","controls":"Bottom thickened edge depth (D1)","proposal":"KEEP","reason":"Changes with the panel joint detail","becomes":""},{"name":"bot_width","step":"1","script":"GRC_PANEL, S2_ANCHORS","kind":"slider","value":"90","unit":"mm","controls":"Bottom thickened edge height (D1, 45+45)","proposal":"KEEP","reason":"Drives sock_inset and cp_lip","becomes":""},{"name":"bot_haunch","step":"1","script":"GRC_PANEL, S2_ANCHORS","kind":"slider","value":"10","unit":"mm","controls":"45 deg haunch between D1 block and skin","proposal":"FIX","reason":"Standard D1 detail","becomes":"BOT_HAUNCH = 10.0"},{"name":"sock_d","step":"1","script":"GRC_PANEL, S3_CLOSING","kind":"slider","value":"8","unit":"mm","controls":"Cast-in socket diameter (M8)","proposal":"FIX","reason":"Catalog product (8 mm cast-in socket)","becomes":"SOCK_D = 8.0"},{"name":"sock_len","step":"1","script":"GRC_PANEL","kind":"slider","value":"70","unit":"mm","controls":"Cast-in socket embed length","proposal":"FIX","reason":"Catalog product length","becomes":"SOCK_LEN = 70.0"},{"name":"pin_d","step":"1","script":"GRC_PANEL","kind":"slider","value":"6","unit":"mm","controls":"Socket cross-pin diameter","proposal":"FIX","reason":"Catalog product","becomes":"PIN_D = 6.0"},{"name":"pin_len","step":"1","script":"GRC_PANEL","kind":"slider","value":"30","unit":"mm","controls":"Socket cross-pin length","proposal":"FIX","reason":"Catalog product","becomes":"PIN_LEN = 30.0"},{"name":"sock_inset","step":"1","script":"GRC_PANEL","kind":"slider","value":"45","unit":"mm","controls":"Socket axis height above the bottom edge","proposal":"DERIVE","reason":"Always mid-height of D1 (45 + 45)","becomes":"= bot_width / 2"},{"name":"sock_end","step":"1","script":"GRC_PANEL","kind":"slider","value":"100","unit":"mm","controls":"First/last socket distance from panel ends","proposal":"FIX","reason":"Detailing rule, same on every panel","becomes":"SOCK_END = 100.0"},{"name":"sock_max_sp","step":"1","script":"GRC_PANEL","kind":"slider","value":"630","unit":"mm","controls":"Max socket spacing along bottom edge","proposal":"FIX","reason":"From sample sheet E2 (621-629)","becomes":"SOCK_MAX_SP = 630.0"},{"name":"station","step":"1","script":"GRC_PANEL","kind":"slider","value":"100","unit":"mm","controls":"Loft station spacing for edge solids","proposal":"FIX","reason":"Modelling resolution, not design","becomes":"STATION = 100.0"},{"name":"density","step":"1","script":"GRC_PANEL, S3_CLOSING","kind":"slider","value":"2000","unit":"kg/m3","controls":"GRC density for weights","proposal":"FIX","reason":"Material property","becomes":"RHO_GRC = 2000.0"},{"name":"flip_back","step":"1","script":"GRC_PANEL","kind":"toggle","value":"False","unit":"","controls":"Flips the BACK direction of the input face","proposal":"KEEP","reason":"Needed per input surface orientation","becomes":""},{"name":"folder","step":"2","script":"S2_CATALOG, S2_BAKE, S3_BAKE","kind":"panel","value":"(definition folder)","unit":"path","controls":"Output folder for CSV/bake","proposal":"DERIVE","reason":"Same folder as the .gh file","becomes":"= folder of gh.FilePath"},{"name":"sync_lists","step":"2","script":"S2_CATALOG","kind":"toggle","value":"True","unit":"","controls":"Refills profile value lists from the catalog","proposal":"FIX","reason":"Always on","becomes":"SYNC_LISTS = True"},{"name":"gap","step":"2","script":"S2_LAYOUT","kind":"slider","value":"170","unit":"mm","controls":"Clear gap skin back -> stud front face","proposal":"KEEP","reason":"Design variable (D2: 170)","becomes":""},{"name":"edge_inset","step":"2","script":"S2_LAYOUT","kind":"slider","value":"160","unit":"mm","controls":"Panel edge -> perimeter stud outer face","proposal":"KEEP","reason":"Design variable (D2: 160)","becomes":""},{"name":"max_bay","step":"2","script":"S2_LAYOUT","kind":"slider","value":"600","unit":"mm","controls":"Max vertical stud spacing (even bay count)","proposal":"KEEP","reason":"Main frame design variable","becomes":""},{"name":"mid_rows","step":"2","script":"S2_LAYOUT","kind":"slider","value":"0","unit":"no.","controls":"Intermediate horizontal rows","proposal":"KEEP","reason":"Needed on tall panels","becomes":""},{"name":"v_end_align","step":"2","script":"S2_LAYOUT","kind":"value list","value":"inside","unit":"","controls":"How vertical ends meet the chords","proposal":"FIX","reason":"Decided at step 2 review","becomes":"V_END_ALIGN = 'inside'"},{"name":"prof_edge_v","step":"2","script":"S2_LAYOUT","kind":"value list","value":"RHS 100x50x4","unit":"","controls":"Profile: left/right verticals","proposal":"KEEP","reason":"Catalog choice per project","becomes":""},{"name":"prof_centre_v","step":"2","script":"S2_LAYOUT","kind":"value list","value":"RHS 100x50x4","unit":"","controls":"Profile: centre vertical","proposal":"KEEP","reason":"Catalog choice per project","becomes":""},{"name":"prof_inner_v","step":"2","script":"S2_LAYOUT","kind":"value list","value":"RHS 60x40x3","unit":"","controls":"Profile: inner verticals","proposal":"KEEP","reason":"Catalog choice per project","becomes":""},{"name":"prof_top_ch","step":"2","script":"S2_LAYOUT","kind":"value list","value":"RHS 100x50x4","unit":"","controls":"Profile: top chord pieces","proposal":"KEEP","reason":"Catalog choice per project","becomes":""},{"name":"prof_bot_ch","step":"2","script":"S2_LAYOUT","kind":"value list","value":"RHS 100x50x4","unit":"","controls":"Profile: bottom chord pieces","proposal":"KEEP","reason":"Catalog choice per project","becomes":""},{"name":"prof_mid_row","step":"2","script":"S2_LAYOUT","kind":"value list","value":"RHS 60x40x3","unit":"","controls":"Profile: mid-row pieces","proposal":"KEEP","reason":"Catalog choice per project","becomes":""},{"name":"overrides","step":"2","script":"S2_LAYOUT","kind":"panel","value":"(empty)","unit":"","controls":"Per-member profile overrides","proposal":"KEEP","reason":"Exceptions per panel","becomes":""},{"name":"anchor_max_spacing","step":"2","script":"S2_ANCHORS, S2_CHECKS","kind":"slider","value":"600","unit":"mm","controls":"Max flex anchor spacing","proposal":"KEEP","reason":"Engineer may change per wind load","becomes":""},{"name":"anchor_edge_dist","step":"2","script":"S2_ANCHORS","kind":"slider","value":"200","unit":"mm","controls":"Anchor distance from return/edge","proposal":"KEEP","reason":"Rule window 150-300","becomes":""},{"name":"anchors_on_chords","step":"2","script":"S2_ANCHORS","kind":"toggle","value":"False","unit":"","controls":"Also place anchors on chords","proposal":"KEEP","reason":"Design option","becomes":""},{"name":"toe_mode","step":"2","script":"S2_ANCHORS","kind":"value list","value":"perpendicular","unit":"","controls":"Foot toe direction","proposal":"KEEP","reason":"Design option","becomes":""},{"name":"weld_len","step":"2","script":"S2_ANCHORS","kind":"slider","value":"50","unit":"mm","controls":"Anchor leg weld lap on stud","proposal":"FIX","reason":"Welding standard","becomes":"WELD_LEN = 50.0"},{"name":"rod_d","step":"2","script":"S2_ANCHORS, S3_CONNECTORS","kind":"slider","value":"12","unit":"mm","controls":"Flex anchor rod diameter","proposal":"FIX","reason":"Spec: 12 mm flex anchor","becomes":"ROD_D = 12.0"},{"name":"bend_r_in","step":"2","script":"S2_ANCHORS","kind":"slider","value":"24","unit":"mm","controls":"Heel inside bend radius","proposal":"DERIVE","reason":"Bending rule 2 x d","becomes":"= 2 * ROD_D"},{"name":"foot_len","step":"2","script":"S2_ANCHORS","kind":"slider","value":"100","unit":"mm","controls":"Anchor foot length","proposal":"FIX","reason":"Standard (>= 75 effective)","becomes":"FOOT_LEN = 100.0"},{"name":"foot_clear","step":"2","script":"S2_ANCHORS","kind":"slider","value":"5","unit":"mm","controls":"Foot height above skin back","proposal":"FIX","reason":"Rule 3-10 mm","becomes":"FOOT_CLEAR = 5.0"},{"name":"pad_len","step":"2","script":"S2_ANCHORS","kind":"slider","value":"150","unit":"mm","controls":"Bonding pad base length","proposal":"FIX","reason":"Production standard pad","becomes":"PAD_LEN = 150.0"},{"name":"pad_wid","step":"2","script":"S2_ANCHORS","kind":"slider","value":"100","unit":"mm","controls":"Bonding pad base width","proposal":"FIX","reason":"Production standard pad","becomes":"PAD_WID = 100.0"},{"name":"pad_h","step":"2","script":"S2_ANCHORS","kind":"slider","value":"30","unit":"mm","controls":"Bonding pad height","proposal":"DERIVE","reason":"Height = clearance + rod + cover","becomes":"= FOOT_CLEAR + ROD_D + PAD_COVER (5 + 12 + 13)"},{"name":"pad_cover","step":"2","script":"S2_ANCHORS, S2_CHECKS","kind":"slider","value":"13","unit":"mm","controls":"GRC cover over the foot","proposal":"FIX","reason":"PCI minimum 13 mm","becomes":"PAD_COVER = 13.0"},{"name":"pad_slope","step":"2","script":"S2_ANCHORS","kind":"slider","value":"25","unit":"mm","controls":"Pad side slope run","proposal":"FIX","reason":"Pad shape standard","becomes":"PAD_SLOPE = 25.0"},{"name":"pad_heel","step":"2","script":"S2_ANCHORS","kind":"slider","value":"3","unit":"mm","controls":"Pad offset past the heel","proposal":"FIX","reason":"Pad shape standard","becomes":"PAD_HEEL = 3.0"},{"name":"pad_sink","step":"2","script":"S2_ANCHORS","kind":"slider","value":"2","unit":"mm","controls":"Pad overlap into skin (boolean safety)","proposal":"FIX","reason":"Modelling tolerance","becomes":"PAD_SINK = 2.0"},{"name":"build_solids","step":"2","script":"S2_ANCHORS, S2_PROFILES","kind":"toggle","value":"True","unit":"","controls":"Build tube/rod/pad solids (speed)","proposal":"KEEP","reason":"Speed switch for layout work","becomes":""},{"name":"ch_w","step":"3","script":"S3_CONNECTORS","kind":"slider","value":"50","unit":"mm","controls":"Strut channel width","proposal":"FIX","reason":"Catalog 50x30x10 channel","becomes":"CH_W = 50.0"},{"name":"ch_h","step":"3","script":"S3_CONNECTORS","kind":"slider","value":"30","unit":"mm","controls":"Strut channel height","proposal":"FIX","reason":"Catalog 50x30x10 channel","becomes":"CH_H = 30.0"},{"name":"ch_lip","step":"3","script":"S3_CONNECTORS","kind":"slider","value":"10","unit":"mm","controls":"Strut channel lip","proposal":"FIX","reason":"Catalog 50x30x10 channel","becomes":"CH_LIP = 10.0"},{"name":"ch_len","step":"3","script":"S3_CONNECTORS","kind":"slider","value":"150","unit":"mm","controls":"Strut channel length","proposal":"FIX","reason":"Detail D2 (150)","becomes":"CH_LEN = 150.0"},{"name":"stf_t","step":"3","script":"S3_CONNECTORS","kind":"slider","value":"5","unit":"mm","controls":"Stiffener plate thickness","proposal":"FIX","reason":"Detail D2 (5 mm)","becomes":"STF_T = 5.0"},{"name":"stf_up","step":"3","script":"S3_CONNECTORS","kind":"slider","value":"50","unit":"mm","controls":"Stiffener leg up the RHS side","proposal":"FIX","reason":"Detail D2 (50 band)","becomes":"STF_UP = 50.0"},{"name":"stf_across","step":"3","script":"S3_CONNECTORS","kind":"slider","value":"50","unit":"mm","controls":"Stiffener leg across the channel","proposal":"DERIVE","reason":"Always the channel width","becomes":"= CH_W"},{"name":"stf_inset","step":"3","script":"S3_CONNECTORS","kind":"slider","value":"5","unit":"mm","controls":"Stiffener inset from channel ends","proposal":"FIX","reason":"Detail D2 elevation E","becomes":"STF_INSET = 5.0"},{"name":"bolt_d","step":"3","script":"S3_CONNECTORS","kind":"slider","value":"16","unit":"mm","controls":"T-bolt diameter","proposal":"FIX","reason":"Spec: M16 T-bolt","becomes":"BOLT_D = 16.0"},{"name":"bolt_len","step":"3","script":"S3_CONNECTORS","kind":"slider","value":"50","unit":"mm","controls":"T-bolt length","proposal":"FIX","reason":"Catalog length","becomes":"BOLT_LEN = 50.0"},{"name":"head_l","step":"3","script":"S3_CONNECTORS","kind":"slider","value":"40","unit":"mm","controls":"T-bolt head length","proposal":"FIX","reason":"Catalog M16 hammer head","becomes":"HEAD_L = 40.0"},{"name":"head_w","step":"3","script":"S3_CONNECTORS","kind":"slider","value":"20","unit":"mm","controls":"T-bolt head width","proposal":"FIX","reason":"Catalog M16 hammer head","becomes":"HEAD_W = 20.0"},{"name":"head_t","step":"3","script":"S3_CONNECTORS","kind":"slider","value":"10","unit":"mm","controls":"T-bolt head thickness","proposal":"FIX","reason":"Catalog M16 hammer head","becomes":"HEAD_T = 10.0"},{"name":"washer_d","step":"3","script":"S3_CONNECTORS","kind":"slider","value":"30","unit":"mm","controls":"Washer outside diameter","proposal":"DERIVE","reason":"ISO 7089 table from bolt size","becomes":"= ISO_WASHER[BOLT_D].d (M16: 30)"},{"name":"washer_t","step":"3","script":"S3_CONNECTORS","kind":"slider","value":"3","unit":"mm","controls":"Washer thickness","proposal":"DERIVE","reason":"ISO 7089 table from bolt size","becomes":"= ISO_WASHER[BOLT_D].t (M16: 3)"},{"name":"nut_af","step":"3","script":"S3_CONNECTORS","kind":"slider","value":"24","unit":"mm","controls":"Nut across flats","proposal":"DERIVE","reason":"ISO 4032 table from bolt size","becomes":"= ISO_NUT[BOLT_D].af (M16: 24)"},{"name":"nut_h","step":"3","script":"S3_CONNECTORS","kind":"slider","value":"13","unit":"mm","controls":"Nut height","proposal":"DERIVE","reason":"ISO 4032 table from bolt size","becomes":"= ISO_NUT[BOLT_D].h (M16: 13)"},{"name":"br_t","step":"3","script":"S3_CONNECTORS","kind":"slider","value":"10","unit":"mm","controls":"Hanging bracket plate thickness","proposal":"FIX","reason":"Spec: 10 mm T plate","becomes":"BR_T = 10.0"},{"name":"br_w","step":"3","script":"S3_CONNECTORS, S3_GYPSUM","kind":"slider","value":"150","unit":"mm","controls":"Bracket flange width (across)","proposal":"DERIVE","reason":"Channel + stud + channel","becomes":"= 2 * CH_W + stud width (50+50+50)"},{"name":"br_l","step":"3","script":"S3_CONNECTORS, S3_GYPSUM","kind":"slider","value":"100","unit":"mm","controls":"Bracket flange length (along stud)","proposal":"FIX","reason":"Spec: 100x150 plate","becomes":"BR_L = 100.0"},{"name":"br_hole","step":"3","script":"S3_CONNECTORS","kind":"slider","value":"18","unit":"mm","controls":"Bracket bolt hole diameter","proposal":"DERIVE","reason":"Clearance hole","becomes":"= BOLT_D + 2"},{"name":"br_hole_off","step":"3","script":"S3_CONNECTORS","kind":"slider","value":"50","unit":"mm","controls":"Hole offset from stud centreline","proposal":"DERIVE","reason":"Centre of each channel","becomes":"= (stud width + CH_W) / 2"},{"name":"stem_proj","step":"3","script":"S3_CONNECTORS","kind":"slider","value":"100","unit":"mm","controls":"Bracket stem projection (back)","proposal":"FIX","reason":"Spec: 100 high stem","becomes":"STEM_PROJ = 100.0"},{"name":"stem_len","step":"3","script":"S3_CONNECTORS","kind":"slider","value":"100","unit":"mm","controls":"Bracket stem length (along stud)","proposal":"DERIVE","reason":"Same as flange length","becomes":"= BR_L"},{"name":"slot_w","step":"3","script":"S3_CONNECTORS","kind":"slider","value":"18","unit":"mm","controls":"Hook slot width","proposal":"DERIVE","reason":"Same as hole clearance","becomes":"= BR_HOLE"},{"name":"slot_d","step":"3","script":"S3_CONNECTORS","kind":"slider","value":"50","unit":"mm","controls":"Hook slot depth","proposal":"FIX","reason":"Bracket standard","becomes":"SLOT_D = 50.0"},{"name":"anchor_clear","step":"3","script":"S3_CONNECTORS","kind":"slider","value":"5","unit":"mm","controls":"Clearance anchor leg <-> connector","proposal":"FIX","reason":"Modelling clearance","becomes":"ANCHOR_CLEAR = 5.0"},{"name":"hook_slot","step":"3","script":"S3_CONNECTORS","kind":"toggle","value":"True","unit":"","controls":"Cut the hook slot in the stem","proposal":"KEEP","reason":"Depends on the building-side steel","becomes":""},{"name":"anchor_fix","step":"3","script":"S3_CONNECTORS","kind":"value list","value":"lower_lap","unit":"","controls":"How anchors near connectors are fixed","proposal":"FIX","reason":"Decided at step 3 review","becomes":"ANCHOR_FIX = 'lower_lap'"},{"name":"build3","step":"3","script":"S3_CONNECTORS","kind":"toggle","value":"True","unit":"","controls":"Build step 3 solids (speed)","proposal":"DERIVE","reason":"One speed switch for the whole definition","becomes":"= build_solids"},{"name":"board_max_len","step":"3","script":"S3_GYPSUM","kind":"slider","value":"3000","unit":"mm","controls":"Max gypsum board length","proposal":"FIX","reason":"Board product size","becomes":"BOARD_MAX_LEN = 3000.0"},{"name":"cut_clear","step":"3","script":"S3_GYPSUM","kind":"slider","value":"15","unit":"mm","controls":"Clearance of the rounded cut-out","proposal":"FIX","reason":"Detailing standard","becomes":"CUT_CLEAR = 15.0"},{"name":"cut_r","step":"3","script":"S3_GYPSUM","kind":"slider","value":"30","unit":"mm","controls":"Cut-out corner radius","proposal":"FIX","reason":"Detailing standard","becomes":"CUT_R = 30.0"},{"name":"dev_tol","step":"3","script":"S3_GYPSUM","kind":"slider","value":"3","unit":"mm","controls":"Board flatness warning limit","proposal":"FIX","reason":"Check tolerance","becomes":"DEV_TOL = 3.0"},{"name":"bear_mode","step":"3","script":"S3_GYPSUM","kind":"value list","value":"deepest","unit":"","controls":"Board bearing face choice","proposal":"FIX","reason":"Decided at step 3 review","becomes":"BEAR_MODE = 'deepest'"},{"name":"cp_t","step":"3","script":"S3_CLOSING","kind":"slider","value":"15","unit":"mm","controls":"Closing piece thickness","proposal":"KEEP","reason":"You asked for this slider","becomes":""},{"name":"cp_lip","step":"3","script":"S3_CLOSING","kind":"slider","value":"90","unit":"mm","controls":"Closing piece lip height","proposal":"DERIVE","reason":"Lip covers the D1 block","becomes":"= bot_width"},{"name":"cp_drop","step":"3","script":"S3_CLOSING","kind":"slider","value":"150","unit":"mm","controls":"Closing piece offset from panel edge","proposal":"KEEP","reason":"Design value per project (15 cm)","becomes":""},{"name":"cp_joint","step":"3","script":"S3_CLOSING","kind":"slider","value":"5","unit":"mm","controls":"Joint between CP1 and CP2","proposal":"FIX","reason":"Detailing standard","becomes":"CP_JOINT = 5.0"},{"name":"cp_hole","step":"3","script":"S3_CLOSING","kind":"slider","value":"10","unit":"mm","controls":"Screw hole in the lip","proposal":"DERIVE","reason":"Clearance hole","becomes":"= SCR_D + 2"},{"name":"cp_station","step":"3","script":"S3_CLOSING","kind":"slider","value":"50","unit":"mm","controls":"Loft station spacing for closing piece","proposal":"FIX","reason":"Modelling resolution","becomes":"CP_STATION = 50.0"},{"name":"scr_d","step":"3","script":"S3_CLOSING","kind":"slider","value":"8","unit":"mm","controls":"Screw diameter","proposal":"DERIVE","reason":"Must match the socket","becomes":"= SOCK_D"},{"name":"scr_len","step":"3","script":"S3_CLOSING","kind":"slider","value":"40","unit":"mm","controls":"Screw length","proposal":"FIX","reason":"Catalog M8 x 40","becomes":"SCR_LEN = 40.0"},{"name":"scr_head_af","step":"3","script":"S3_CLOSING","kind":"slider","value":"13","unit":"mm","controls":"Screw head across flats","proposal":"DERIVE","reason":"ISO 4017 table from screw size","becomes":"= ISO_HEAD[SCR_D].af (M8: 13)"},{"name":"scr_head_h","step":"3","script":"S3_CLOSING","kind":"slider","value":"5.3","unit":"mm","controls":"Screw head height","proposal":"DERIVE","reason":"ISO 4017 table from screw size","becomes":"= ISO_HEAD[SCR_D].k (M8: 5.3)"},{"name":"scr_washer_d","step":"3","script":"S3_CLOSING","kind":"slider","value":"16","unit":"mm","controls":"Screw washer diameter","proposal":"DERIVE","reason":"ISO 7089 table from screw size","becomes":"= ISO_WASHER[SCR_D].d (M8: 16)"},{"name":"scr_washer_t","step":"3","script":"S3_CLOSING","kind":"slider","value":"1.6","unit":"mm","controls":"Screw washer thickness","proposal":"DERIVE","reason":"ISO 7089 table from screw size","becomes":"= ISO_WASHER[SCR_D].t (M8: 1.6)"},{"name":"CH_T","step":"3","script":"S3_CONNECTORS","kind":"constant","value":"2.5","unit":"mm","controls":"Strut channel wall thickness","proposal":"FIX","reason":"Already a constant (your decision)","becomes":"CH_T = 2.5 (done)"},{"name":"GYP_T","step":"3","script":"S3_GYPSUM","kind":"constant","value":"12.5","unit":"mm","controls":"Gypsum layer thickness","proposal":"FIX","reason":"Already a constant (your decision)","becomes":"GYP_T = 12.5 (done)"},{"name":"N_LAYERS","step":"3","script":"S3_GYPSUM","kind":"constant","value":"1","unit":"no.","controls":"Number of gypsum layers","proposal":"FIX","reason":"Already a constant - but see the question below","becomes":"N_LAYERS = 1 (done)"},{"name":"POSITION_RULE","step":"3","script":"S3_CONNECTORS","kind":"constant","value":"chord inner face","unit":"","controls":"Hanging connector position","proposal":"FIX","reason":"Already a constant (your decision)","becomes":"(done)"},{"name":"RHO_STEEL","step":"3","script":"S3_CONNECTORS, S3_CHECKS","kind":"constant","value":"7850","unit":"kg/m3","controls":"Steel density","proposal":"FIX","reason":"Already a constant","becomes":"(done)"},{"name":"TOL","step":"2","script":"S2_CHECKS, S3_CONNECTORS, S3_GYPSUM, S3_CLOSING","kind":"constant","value":"0.01","unit":"mm","controls":"Geometry tolerance","proposal":"FIX","reason":"Already a constant (4 copies: move to one shared value)","becomes":"(done)"},{"name":"VOL_TOL","step":"3","script":"S3_CHECKS","kind":"constant","value":"5","unit":"mm3","controls":"Clash volume below which it counts as contact","proposal":"FIX","reason":"Already a constant","becomes":"(done)"}]</script>
-
     <script>
+      // Idioma
+      (function () {
+        var h = document.documentElement;
+        var buttons = document.querySelectorAll("[data-set-lang]");
+        function setLang(l) {
+          h.setAttribute("data-lang", l);
+          h.lang = l === "pt" ? "pt-BR" : "en";
+          document.title = l === "pt" ? "GRID · Quadro de aço para painel GRC" : "GRID · GRC Steel Frame Layout";
+          for (var i = 0; i < buttons.length; i++) buttons[i].setAttribute("aria-pressed", buttons[i].getAttribute("data-set-lang") === l ? "true" : "false");
+          var en = l === "en";
+          var boxes = document.querySelectorAll("figure.shot .img, .pcard .img");
+          for (var j = 0; j < boxes.length; j++) boxes[j].setAttribute("aria-label", en ? "Enlarge image" : "Ampliar imagem");
+          document.querySelector("#viewer [data-close]").setAttribute("aria-label", en ? "Close" : "Fechar");
+        }
+        for (var i = 0; i < buttons.length; i++) {
+          buttons[i].addEventListener("click", function () {
+            var l = this.getAttribute("data-set-lang");
+            setLang(l);
+            try { localStorage.setItem("grid-lang", l); } catch (e) {}
+          });
+        }
+        window.gridSetLang = setLang;
+      })();
+
       // Imagens: clique abre ampliada
       (function () {
         var dlg = document.getElementById("viewer");
@@ -830,12 +590,10 @@
         var cap = dlg.querySelector(".cap");
         var boxes = document.querySelectorAll("figure.shot .img, .pcard .img");
         for (var i = 0; i < boxes.length; i++) {
-          var b = boxes[i];
-          b.setAttribute("role", "button");
-          b.setAttribute("tabindex", "0");
-          b.setAttribute("aria-label", "Enlarge image");
-          b.addEventListener("click", openBox);
-          b.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openBox.call(this); } });
+          boxes[i].setAttribute("role", "button");
+          boxes[i].setAttribute("tabindex", "0");
+          boxes[i].addEventListener("click", openBox);
+          boxes[i].addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openBox.call(this); } });
         }
         function openBox() {
           var img = this.querySelector("img");
@@ -843,7 +601,7 @@
           big.src = img.src;
           big.alt = img.alt;
           var fc = this.parentNode.querySelector("figcaption");
-          cap.textContent = fc ? fc.textContent : img.alt;
+          cap.textContent = fc ? fc.innerText : "";
           dlg.showModal();
           if (window.umami && umami.track) umami.track("grc-imagem-ampliada", { img: img.getAttribute("src") });
         }
@@ -851,80 +609,7 @@
         dlg.addEventListener("click", function (e) { if (e.target === dlg) dlg.close(); });
       })();
 
-      // Tabela do inventário: filtros, busca e ordenação
-      (function () {
-        var rows = [];
-        try { rows = JSON.parse(document.getElementById("inventory").textContent); } catch (e) {}
-        var tbody = document.querySelector("#inv tbody");
-        var ths = document.querySelectorAll("#inv thead th");
-        var shown = document.getElementById("inv-shown");
-        var q = document.getElementById("q");
-        var state = { step: "", proposal: "", sort: "step", dir: 1 };
-        var ORDER = { KEEP: 0, DERIVE: 1, FIX: 2 };
-
-        function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
-
-        var c = { KEEP: 0, FIX: 0, DERIVE: 0 };
-        rows.forEach(function (r) { c[r.proposal]++; });
-        document.getElementById("counts").innerHTML =
-          '<div class="count"><b>' + rows.length + '</b><span>inputs listed</span></div>' +
-          '<div class="count"><b>' + c.KEEP + '</b><span><span class="badge KEEP">KEEP</span></span></div>' +
-          '<div class="count"><b>' + c.FIX + '</b><span><span class="badge FIX">FIX</span></span></div>' +
-          '<div class="count"><b>' + c.DERIVE + '</b><span><span class="badge DERIVE">DERIVE</span></span></div>';
-
-        function val(r, k) {
-          if (k === "step") return Number(r.step) * 1000 + rows.indexOf(r);
-          if (k === "proposal") return ORDER[r.proposal] * 1000 + rows.indexOf(r);
-          if (k === "value") { var n = parseFloat(r.value); return isNaN(n) ? -1e9 : n; }
-          return String(r[k] || "").toLowerCase();
-        }
-        function render() {
-          var term = (q.value || "").trim().toLowerCase();
-          var list = rows.filter(function (r) {
-            if (state.step && r.step !== state.step) return false;
-            if (state.proposal && r.proposal !== state.proposal) return false;
-            if (term && (r.name + " " + r.controls + " " + r.reason + " " + r.script).toLowerCase().indexOf(term) < 0) return false;
-            return true;
-          });
-          list.sort(function (a, b) { var x = val(a, state.sort), y = val(b, state.sort); return (x < y ? -1 : x > y ? 1 : 0) * state.dir; });
-          tbody.innerHTML = list.map(function (r) {
-            return "<tr>" +
-              '<td class="name">' + esc(r.name) + "</td>" +
-              '<td class="num">0' + esc(r.step) + "</td>" +
-              '<td class="small">' + esc(r.kind) + "</td>" +
-              '<td class="num">' + esc(r.value) + (r.unit && r.unit !== "path" ? " " + esc(r.unit) : "") + "</td>" +
-              "<td>" + esc(r.controls) + "</td>" +
-              '<td><span class="badge ' + esc(r.proposal) + '">' + esc(r.proposal) + "</span></td>" +
-              '<td class="small">' + esc(r.reason) + "</td>" +
-              '<td class="becomes">' + esc(r.becomes) + "</td>" +
-              "</tr>";
-          }).join("");
-          shown.textContent = "Showing " + list.length + " of " + rows.length + " inputs. Click a column title to sort.";
-          for (var i = 0; i < ths.length; i++) {
-            var k = ths[i].getAttribute("data-k");
-            if (k === state.sort) ths[i].setAttribute("aria-sort", state.dir > 0 ? "ascending" : "descending");
-            else ths[i].removeAttribute("aria-sort");
-          }
-        }
-        var btns = document.querySelectorAll(".filters button");
-        for (var i = 0; i < btns.length; i++) {
-          btns[i].addEventListener("click", function () {
-            var f = this.getAttribute("data-f");
-            state[f] = this.getAttribute("data-v");
-            for (var j = 0; j < btns.length; j++) if (btns[j].getAttribute("data-f") === f) btns[j].setAttribute("aria-pressed", btns[j] === this ? "true" : "false");
-            render();
-          });
-        }
-        for (var t = 0; t < ths.length; t++) {
-          ths[t].addEventListener("click", function () {
-            var k = this.getAttribute("data-k");
-            if (state.sort === k) state.dir = -state.dir; else { state.sort = k; state.dir = 1; }
-            render();
-          });
-        }
-        q.addEventListener("input", render);
-        render();
-      })();
+      window.gridSetLang(document.documentElement.getAttribute("data-lang"));
     </script>
   </body>
 </html>
